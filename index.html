@@ -1044,19 +1044,107 @@ function StatsPage({app,back}){
 
 function SettingsPage({app,setApp,back}){
   const[msg,setMsg]=useState('');
-  function exportData(){const json=JSON.stringify(app);const blob=new Blob([json],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='my-english-'+todayStr()+'.json';a.click();URL.revokeObjectURL(url);setMsg('✅ Копия скачана');setTimeout(()=>setMsg(''),2000);}
-  function importData(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);setApp(d);saveData(d);setMsg('✅ Импортировано');setTimeout(()=>setMsg(''),2000);}catch(err){setMsg('❌ Ошибка: '+err.message);}};r.readAsText(f);}
+  const[msgType,setMsgType]=useState('ok'); // 'ok' | 'err' | 'load'
+  const[ghToken,setGhToken]=useState(()=>localStorage.getItem('gh-token')||'');
+  const[showToken,setShowToken]=useState(false);
+  const[syncing,setSyncing]=useState(false);
+
+  const GH_USER='ari-fairy';
+  const GH_REPO='english-journal';
+  const GH_FILE='progress.json';
+
+  function notify(text,type='ok'){setMsg(text);setMsgType(type);setTimeout(()=>setMsg(''),3500);}
+
+  function saveToken(t){setGhToken(t);localStorage.setItem('gh-token',t);}
+
+  async function ghRequest(method,body,sha){
+    const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
+    const headers={'Authorization':'token '+ghToken,'Content-Type':'application/json'};
+    const payload={message:'Sync progress '+todayStr(),content:btoa(unescape(encodeURIComponent(JSON.stringify(body))))};
+    if(sha)payload.sha=sha;
+    const res=await fetch(url,{method,headers,body:method==='GET'?undefined:JSON.stringify(payload)});
+    return{res,data:await res.json()};
+  }
+
+  async function syncSave(){
+    if(!ghToken){notify('❌ Введи токен GitHub ниже','err');return;}
+    setSyncing(true);notify('⏳ Сохраняю...','load');
+    try{
+      // Check if file exists to get sha
+      const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
+      const check=await fetch(url,{headers:{'Authorization':'token '+ghToken}});
+      let sha=undefined;
+      if(check.ok){const d=await check.json();sha=d.sha;}
+      const{res}=await ghRequest('PUT',app,sha);
+      if(res.ok)notify('✅ Прогресс сохранён в GitHub!');
+      else notify('❌ Ошибка сохранения. Проверь токен','err');
+    }catch(e){notify('❌ Нет соединения','err');}
+    setSyncing(false);
+  }
+
+  async function syncLoad(){
+    if(!ghToken){notify('❌ Введи токен GitHub ниже','err');return;}
+    setSyncing(true);notify('⏳ Загружаю...','load');
+    try{
+      const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
+      const res=await fetch(url,{headers:{'Authorization':'token '+ghToken}});
+      if(!res.ok){notify('❌ Файл не найден. Сначала сохрани с другого устройства','err');setSyncing(false);return;}
+      const d=await res.json();
+      const json=JSON.parse(decodeURIComponent(escape(atob(d.content))));
+      setApp(json);saveData(json);
+      notify('✅ Прогресс загружен!');
+    }catch(e){notify('❌ Ошибка загрузки','err');}
+    setSyncing(false);
+  }
+
+  function exportData(){const json=JSON.stringify(app);const blob=new Blob([json],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='my-english-'+todayStr()+'.json';a.click();URL.revokeObjectURL(url);notify('✅ Копия скачана');}
+  function importData(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);setApp(d);saveData(d);notify('✅ Импортировано');}catch(err){notify('❌ Ошибка: '+err.message,'err');}};r.readAsText(f);}
   function reset(){if(!confirm('Удалить все данные?'))return;localStorage.removeItem('my-eng-v2');location.reload();}
+
+  const msgColor=msgType==='err'?'#D4A5A5':msgType==='load'?'#B8B5D0':'#94A187';
+
   return<div className="fade-in">
     <button className="back-btn" onClick={back} style={{marginBottom:16}}>&#8592; Назад</button>
     <h2 className="section-title" style={{marginBottom:16}}>Настройки</h2>
-    {msg&&<div className="card" style={{textAlign:'center',marginBottom:12,padding:12,fontSize:14}}>{msg}</div>}
+    {msg&&<div className="card" style={{textAlign:'center',marginBottom:12,padding:12,fontSize:14,color:msgColor,fontWeight:600}}>{msg}</div>}
+
+    {/* GitHub Sync */}
     <div className="card" style={{marginBottom:16}}>
-      <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>💻 Синхронизация</h3>
-      <p style={{fontSize:12,color:'#999',marginBottom:16}}>Скачайте копию на одном устройстве и загрузите на другом</p>
-      <button className="btn btn-primary" style={{width:'100%',padding:14,marginBottom:8}} onClick={exportData}>⬇️ Скачать копию</button>
-      <label className="btn btn-secondary" style={{width:'100%',padding:14,display:'block',textAlign:'center',cursor:'pointer'}}>⬆️ Загрузить копию<input type="file" accept=".json" onChange={importData} className="hidden-input"/></label>
+      <h3 style={{fontSize:14,fontWeight:600,marginBottom:4}}>☁️ Синхронизация через GitHub</h3>
+      <p style={{fontSize:12,color:'#999',marginBottom:12}}>Сохраняй прогресс в GitHub и загружай на любом устройстве одной кнопкой</p>
+      <div style={{display:'flex',gap:8,marginBottom:12}}>
+        <button className="btn btn-primary" style={{flex:1,padding:14,fontSize:14}} onClick={syncSave} disabled={syncing}>
+          ☁️ Сохранить
+        </button>
+        <button className="btn btn-secondary" style={{flex:1,padding:14,fontSize:14}} onClick={syncLoad} disabled={syncing}>
+          ⬇️ Загрузить
+        </button>
+      </div>
+      <div style={{borderTop:'1px solid #f0ebe3',paddingTop:12,marginTop:4}}>
+        <div style={{fontSize:12,color:'#bbb',marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span>GitHub токен</span>
+          <button onClick={()=>setShowToken(v=>!v)} style={{background:'none',border:'none',color:'#bbb',cursor:'pointer',fontSize:12}}>{showToken?'скрыть':'показать'}</button>
+        </div>
+        <input
+          type={showToken?'text':'password'}
+          placeholder="ghp_xxxxxxxxxxxx"
+          value={ghToken}
+          onChange={e=>saveToken(e.target.value)}
+          style={{width:'100%',padding:'10px 12px',borderRadius:12,border:'1.5px solid #e0d6cc',fontSize:13,outline:'none',boxSizing:'border-box'}}
+        />
+        <p style={{fontSize:11,color:'#ccc',marginTop:6,lineHeight:1.5}}>
+          Получить токен: github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → галочка <b>repo</b>
+        </p>
+      </div>
     </div>
+
+    {/* Manual backup */}
+    <div className="card" style={{marginBottom:16}}>
+      <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>💾 Ручное копирование</h3>
+      <button className="btn" style={{width:'100%',padding:12,marginBottom:8,fontSize:13}} onClick={exportData}>⬇️ Скачать копию (JSON)</button>
+      <label className="btn" style={{width:'100%',padding:12,display:'block',textAlign:'center',cursor:'pointer',fontSize:13}}>⬆️ Загрузить копию (JSON)<input type="file" accept=".json" onChange={importData} className="hidden-input"/></label>
+    </div>
+
     <div className="card" style={{marginBottom:16}}>
       <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>Данные</h3>
       <p style={{fontSize:13,color:'#888'}}>Слов: {app.words.length} · Выучено: {app.words.filter(w=>w.learned).length} · Глаголов: {app.irregular.length}</p>
