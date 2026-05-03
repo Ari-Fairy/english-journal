@@ -400,7 +400,9 @@ function StudyPage({app,setApp,sessionType,exit}){
 
   function handleAns(a){
     if(!cur||answered)return;
-    const correct=isCorrect(a,expected);
+    const dontRemember=a==='__dont_remember__';
+    const correct=dontRemember?false:isCorrect(a,expected);
+    if(dontRemember)a=expected; // show correct answer in result
     setOk(correct);setAnswered(true);setAns(a);
     beep(correct);
     setTimeout(()=>speak(cur.en),300);
@@ -575,6 +577,8 @@ function StudyPage({app,setApp,sessionType,exit}){
         <form onSubmit={e=>{e.preventDefault();if(ans.trim())handleAns(ans);}} style={{display:'flex',flexDirection:'column',gap:12}}>
           <input ref={inputRef} className="input" style={{textAlign:'center',fontSize:18}} value={ans} onChange={e=>setAns(e.target.value)} placeholder="Ваш ответ..."/>
           <button type="submit" className="btn btn-primary" style={{width:'100%',padding:16}} disabled={!ans.trim()}>Check</button>
+          <button type="button" className="btn btn-ghost" style={{width:'100%',padding:12,marginTop:6,fontSize:14,color:'#bbb'}}
+            onClick={()=>handleAns('__dont_remember__')}>🤍 Не помню</button>
         </form>
       )}
       {mode==='voice'&&!answered&&(
@@ -639,6 +643,10 @@ function StudyPage({app,setApp,sessionType,exit}){
             </div>
           )}
           {!recog&&!recMsg&&<p className="sub-text" style={{marginTop:12}}>Нажмите и скажите ответ</p>}
+          {!recog&&!answered&&(
+            <button className="btn btn-ghost" style={{marginTop:12,fontSize:14,color:'#bbb',width:'100%',padding:10}}
+              onClick={()=>handleAns('__dont_remember__')}>🤍 Не помню</button>
+          )}
         </div>
       )}
       {answered&&<button className="btn btn-secondary" style={{width:'100%',padding:16,marginTop:8}} onClick={next}>{idx+1>=queue.length?'Завершить':'Дальше →'}</button>}
