@@ -428,92 +428,27 @@ function StudyPage({app,setApp,sessionType,exit}){
     setRecog(true);setRecMsg('');
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!SR){setRecog(false);setRecMsg('browser');return;}
-
-    // Detect Android Chrome
-    const isAndroid=/Android/i.test(navigator.userAgent);
-
-    function doStart(keepStream){
-      function stopStream(){if(keepStream)keepStream.getTracks().forEach(t=>t.stop());}
-      try{
-        const r=new SR();
-        r.lang=aLang;
-        r.maxAlternatives=3;
-        r.continuous=false;
-        r.interimResults=true;
-        let gotResult=false;
-        let bestInterim='';
-        let silenceTimer=null;
-        // On Android, give more time between speech chunks
-        const SILENCE_MS=isAndroid?2500:1800;
-
-        function commit(text){
-          if(gotResult)return;
-          gotResult=true;
-          if(silenceTimer)clearTimeout(silenceTimer);
-          stopStream();
-          if(text){handleAns(text);setRecog(false);setRecMsg('');}
-          else{setRecMsg('no-speech');setRecog(false);}
-        }
-
-        r.onresult=e=>{
-          let txt='';
-          // collect ALL results not just last
-          for(let i=0;i<e.results.length;i++){
-            for(let j=0;j<e.results[i].length;j++){
-              const t=e.results[i][j].transcript.trim();
-              if(t){txt=t;break;}
-            }
-            if(txt)break;
-          }
-          if(txt)bestInterim=txt;
-          const last=e.results[e.results.length-1];
-          if(last.isFinal){commit(txt||bestInterim);return;}
-          // Reset silence timer on each new interim result
-          if(silenceTimer)clearTimeout(silenceTimer);
-          silenceTimer=setTimeout(()=>{
-            try{r.abort();}catch(e){}
-            commit(bestInterim);
-          },SILENCE_MS);
-        };
-
-        r.onerror=e=>{
-          if(silenceTimer)clearTimeout(silenceTimer);
-          stopStream();
-          if(e.error==='no-speech'){
-            if(bestInterim){commit(bestInterim);return;}
-            setRecMsg('no-speech');
-          }
-          else if(e.error==='not-allowed'||e.error==='permission-denied'){setRecMsg('not-allowed');}
-          else if(e.error==='network'){setRecMsg('network');}
-          else{setRecMsg('other');}
-          if(!gotResult)setRecog(false);
-        };
-
-        r.onend=()=>{
-          if(!gotResult){
-            if(silenceTimer)clearTimeout(silenceTimer);
-            stopStream();
-            if(bestInterim){commit(bestInterim);}
-            else{setRecog(false);}
-          }
-        };
-
-        r.start();
-      }catch(err){
-        stopStream();
-        setRecMsg('start-error');setRecog(false);
-      }
-    }
-
-    if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
-      navigator.mediaDevices.getUserMedia({audio:true,video:false})
-        .then(stream=>doStart(stream))
-        .catch(err=>{
-          if(err.name==='NotAllowedError'||err.name==='SecurityError'||err.name==='PermissionDeniedError'){
-            setRecMsg('not-allowed');setRecog(false);
-          }else{doStart(null);}
-        });
-    }else{doStart(null);}
+    try{
+      const r=new SR();
+      r.lang=aLang;
+      r.maxAlternatives=1;
+      r.continuous=false;
+      r.interimResults=false;
+      r.onresult=e=>{
+        const t=Array.from(e.results).map(res=>res[0].transcript).join('').trim();
+        if(t){handleAns(t);setRecog(false);setRecMsg('');}
+        else{setRecMsg('no-speech');setRecog(false);}
+      };
+      r.onerror=e=>{
+        if(e.error==='no-speech')setRecMsg('no-speech');
+        else if(e.error==='not-allowed'||e.error==='permission-denied')setRecMsg('not-allowed');
+        else if(e.error==='network')setRecMsg('network');
+        else setRecMsg('other');
+        setRecog(false);
+      };
+      r.onend=()=>setRecog(false);
+      r.start();
+    }catch(err){setRecMsg('start-error');setRecog(false);}
   }
 
   function getPool(){
