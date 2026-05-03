@@ -429,39 +429,73 @@ function StudyPage({app,setApp,sessionType,exit}){
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!SR){setRecog(false);setRecMsg('browser');return;}
     function doStart(keepStream){
+      function stopStream(){if(keepStream)keepStream.getTracks().forEach(t=>t.stop());}
       try{
         const r=new SR();
         r.lang=aLang;
-        r.maxAlternatives=5;
+        r.maxAlternatives=3;
         r.continuous=false;
-        r.interimResults=true;
+        r.interimResults=true; // get interim so we can grab result before onend fires
         let gotResult=false;
-        r.onresult=e=>{
-          // Only process final results
-          const last=e.results[e.results.length-1];
-          if(!last.isFinal)return;
+        let bestInterim='';
+        let silenceTimer=null;
+
+        function commit(text){
+          if(gotResult)return;
           gotResult=true;
-          let best='';
+          if(silenceTimer)clearTimeout(silenceTimer);
+          stopStream();
+          if(text){handleAns(text);setRecog(false);setRecMsg('');}
+          else{setRecMsg('no-speech');setRecog(false);}
+        }
+
+        r.onresult=e=>{
+          const last=e.results[e.results.length-1];
+          // grab best transcript regardless of isFinal
+          let txt='';
           for(let j=0;j<last.length;j++){
             const t=last[j].transcript.trim();
-            if(t){best=t;break;}
+            if(t){txt=t;break;}
           }
-          if(keepStream)keepStream.getTracks().forEach(t=>t.stop());
-          if(best){handleAns(best);setRecog(false);setRecMsg('');}
-          else{setRecMsg('no-speech');setRecog(false);}
+          if(txt)bestInterim=txt;
+          if(last.isFinal){
+            commit(txt||bestInterim);
+            return;
+          }
+          // On Android isFinal often never fires — use silence timer
+          if(silenceTimer)clearTimeout(silenceTimer);
+          silenceTimer=setTimeout(()=>{
+            try{r.stop();}catch(e){}
+            commit(bestInterim);
+          },1800); // 1.8s of silence → accept what we have
         };
+
         r.onerror=e=>{
-          if(keepStream)keepStream.getTracks().forEach(t=>t.stop());
-          if(e.error==='no-speech'){setRecMsg('no-speech');}
+          if(silenceTimer)clearTimeout(silenceTimer);
+          stopStream();
+          if(e.error==='no-speech'){
+            // try using interim if we caught something
+            if(bestInterim){commit(bestInterim);return;}
+            setRecMsg('no-speech');
+          }
           else if(e.error==='not-allowed'||e.error==='permission-denied'){setRecMsg('not-allowed');}
           else if(e.error==='network'){setRecMsg('network');}
           else{setRecMsg('other');}
           setRecog(false);
         };
-        r.onend=()=>{if(!gotResult){if(keepStream)keepStream.getTracks().forEach(t=>t.stop());setRecog(false);}};
+
+        r.onend=()=>{
+          if(!gotResult){
+            if(silenceTimer)clearTimeout(silenceTimer);
+            stopStream();
+            if(bestInterim){commit(bestInterim);}
+            else{setRecog(false);}
+          }
+        };
+
         r.start();
       }catch(err){
-        if(keepStream)keepStream.getTracks().forEach(t=>t.stop());
+        stopStream();
         setRecMsg('start-error');setRecog(false);
       }
     }
