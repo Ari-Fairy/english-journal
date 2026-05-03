@@ -11,20 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:#FDFBF7;color:#4A443F;min-height:100vh;-webkit-font-smoothing:antialiased;overscroll-behavior:none;transition:background .3s,color .3s}
-body.dark{background:#1a1816;color:#e8e0d5}
-body.dark .card{background:rgba(40,36,32,.85);border-color:rgba(255,255,255,.08)}
-body.dark .input,.dark .textarea,.dark .select{background:rgba(40,36,32,.8);border-color:rgba(255,255,255,.1);color:#e8e0d5}
-body.dark .word-row{background:rgba(40,36,32,.5)}
-body.dark .word-row input{color:#e8e0d5}
-body.dark .tabs{background:rgba(255,255,255,.06)}
-body.dark .tab.active{background:rgba(255,255,255,.1);color:#D4A5A5}
-body.dark .menu-card{background:rgba(40,36,32,.85);border-color:rgba(255,255,255,.08)}
-body.dark .progress-bar{background:rgba(255,255,255,.08)}
-body.dark .btn-ghost{color:#94A187}
-body.dark .section-title{color:#e8e0d5}
-body.dark .sub-text{color:#888}
-body.dark .recog-error{background:rgba(40,36,32,.9)}
+body{font-family:'Inter',sans-serif;background:#FDFBF7;color:#4A443F;min-height:100vh;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
 .app{max-width:600px;margin:0 auto;padding:16px 16px 80px}
 .card{background:rgba(255,255,255,.7);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.8);border-radius:2rem;padding:1.5rem;box-shadow:0 8px 30px rgba(0,0,0,.04)}
 .btn{transition:all .2s;cursor:pointer;border:none;font-family:inherit;-webkit-tap-highlight-color:transparent}
@@ -267,31 +254,7 @@ function initApp(){
   if(d&&d.words&&d.irregular)return d;
   const words=SEED_WORDS.map(w=>({id:uid(),en:w.en,ru:w.ru,partOfSpeech:w.pos,topic:w.topic,note:'',learned:false,learnedDate:null,lastReviewed:null,correct:0,wrong:0,streak:0,created:new Date().toISOString()}));
   const irregular=SEED_IRREGULAR.map(v=>({id:uid(),...v,learned:false}));
-  return{words,irregular,stats:{days:[],streak:0,best:0,daily:{},tests:[],lastVisit:null,dailyGoal:5},version:2,achievements:[],dark:false};
-}
-
-// ── Dark mode ───────────────────────────────────────────────────────────────
-function applyDark(on){document.body.classList.toggle('dark',!!on);}
-
-// ── Achievements definitions ─────────────────────────────────────────────────
-const ACHIEVEMENTS=[
-  {id:'first_word',icon:'🌱',name:'First Step',desc:'Выучи первое слово',check:a=>a.words.some(w=>w.learned)},
-  {id:'ten_words',icon:'🌿',name:'Growing',desc:'Выучи 10 слов',check:a=>a.words.filter(w=>w.learned).length>=10},
-  {id:'fifty_words',icon:'🌳',name:'Forest',desc:'Выучи 50 слов',check:a=>a.words.filter(w=>w.learned).length>=50},
-  {id:'streak3',icon:'🔥',name:'On Fire',desc:'3 дня подряд',check:a=>(a.stats.streak||0)>=3},
-  {id:'streak7',icon:'💫',name:'Unstoppable',desc:'7 дней подряд',check:a=>(a.stats.streak||0)>=7},
-  {id:'perfect',icon:'💎',name:'Perfect',desc:'10 правильных подряд без ошибок',check:a=>a.words.some(w=>w.correct>=10&&w.wrong===0)},
-  {id:'reviewer',icon:'🔄',name:'Reviewer',desc:'Первое повторение',check:a=>Object.values(a.stats.daily||{}).some(d=>d.reviewed>0)},
-  {id:'chatter',icon:'🗣️',name:'Chatter',desc:'Попробуй AI Chat',check:a=>a.stats.chatUsed},
-  {id:'all_topics',icon:'🌈',name:'Explorer',desc:'Слова из 5 тем',check:a=>{const t=new Set(a.words.filter(w=>w.learned).map(w=>w.topic));return t.size>=5;}},
-];
-function checkAchievements(app){
-  const current=app.achievements||[];
-  const newOnes=[];
-  ACHIEVEMENTS.forEach(ac=>{
-    if(!current.includes(ac.id)&&ac.check(app)){newOnes.push(ac.id);}
-  });
-  return newOnes;
+  return{words,irregular,stats:{days:[],streak:0,best:0,daily:{},tests:[],lastVisit:null},version:2};
 }
 
 function speak(text,lang){
@@ -320,7 +283,7 @@ function formatTimeLeft(ms){
   if(h<24)return'через '+h+' ч';
   return'через '+Math.ceil(h/24)+' дн';
 }
-function HomePage({app,go,start,setApp}){
+function HomePage({app,go,start}){
   const[recallInfo,setRecallInfo]=useState(false);
   const learned=app.words.filter(w=>w.learned).length;
   const today=todayStr();
@@ -347,22 +310,6 @@ function HomePage({app,go,start,setApp}){
         <div className="divider"></div>
         <div className="stat-box"><div className="stat-num" style={{color:'#B8B5D0'}}>{app.stats.streak||0}</div><div className="stat-label">серия</div></div>
       </div>
-      {/* Daily goal */}
-      {(()=>{
-        const goal=app.stats.dailyGoal||5;
-        const today=todayStr();
-        const todayData=app.stats.daily?.[today]||{};
-        const done=(todayData.learned||0)+(todayData.reviewed||0);
-        const pct=Math.min(100,Math.round(done/goal*100));
-        const done_=done>=goal;
-        return<div className="card" style={{marginBottom:16,padding:'12px 16px'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-            <span style={{fontSize:13,fontWeight:600}}>{done_?'🎯 Цель выполнена!':'🎯 Цель на сегодня'}</span>
-            <span style={{fontSize:12,color:'#999'}}>{done}/{goal} слов</span>
-          </div>
-          <div className="progress-bar"><div className="progress-fill" style={{width:pct+'%',background:done_?'#94A187':'#D4A5A5'}}/></div>
-        </div>;
-      })()}
       <div style={{marginBottom:24}}>
         <button className="btn btn-primary" style={{width:'100%',padding:'20px 24px',textAlign:'left',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'2rem',fontSize:16,marginBottom:12}}
           onClick={()=>start('learn')} disabled={newWords.length===0}>
@@ -403,7 +350,7 @@ function HomePage({app,go,start,setApp}){
         )}
       </div>
       <div className="grid-2">
-        {[{icon:'📖',title:'Dictionary',sub:'Словарь',v:'words'},{icon:'✨',title:'Add New',sub:'Добавить',v:'add'},{icon:'📝',title:'Verbs',sub:'Глаголы',v:'irregular'},{icon:'📈',title:'Insights',sub:'Статистика',v:'stats'},{icon:'🤖',title:'AI Chat',sub:'Разговорный',v:'chat'},{icon:'🃏',title:'Flashcards',sub:'Карточки',v:'flash'}].map(m=>(
+        {[{icon:'📖',title:'Dictionary',sub:'Словарь',v:'words'},{icon:'✨',title:'Add New',sub:'Добавить',v:'add'},{icon:'📝',title:'Verbs',sub:'Глаголы',v:'irregular'},{icon:'📈',title:'Insights',sub:'Статистика',v:'stats'}].map(m=>(
           <div key={m.v} className="menu-card" onClick={()=>go(m.v)}>
             <div className="icon">{m.icon}</div>
             <div className="title">{m.title}</div>
@@ -411,12 +358,8 @@ function HomePage({app,go,start,setApp}){
           </div>
         ))}
       </div>
-      <div style={{marginTop:16,display:'flex',gap:8}}>
-        <button className="btn btn-ghost" style={{flex:1,padding:12,fontSize:13}} onClick={()=>go('settings')}>⚙️ Настройки</button>
-        <button className="btn btn-ghost" style={{padding:12,fontSize:18}} title="Тёмная тема"
-          onClick={()=>{const nd={...app,dark:!app.dark};setApp&&setApp(nd);}}>
-          {app.dark?'☀️':'🌙'}
-        </button>
+      <div style={{marginTop:16}}>
+        <button className="btn btn-ghost" style={{width:'100%',padding:12,fontSize:13}} onClick={()=>go('settings')}>⚙️ Настройки и синхронизация</button>
       </div>
     </div>
   );
@@ -1096,19 +1039,6 @@ function StatsPage({app,back}){
         </div>
       ))}
     </div>
-    <div className="card" style={{marginTop:16}}>
-      <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>🏆 Достижения</h3>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-        {ACHIEVEMENTS.map(ac=>{
-          const got=(app.achievements||[]).includes(ac.id);
-          return<div key={ac.id} style={{padding:'12px',borderRadius:'1rem',background:got?'rgba(148,161,135,.12)':'rgba(0,0,0,.03)',border:got?'1.5px solid rgba(148,161,135,.3)':'1.5px solid transparent',opacity:got?1:0.4,textAlign:'center'}}>
-            <div style={{fontSize:24,marginBottom:4}}>{ac.icon}</div>
-            <div style={{fontSize:12,fontWeight:600,marginBottom:2}}>{ac.name}</div>
-            <div style={{fontSize:10,color:'#999'}}>{ac.desc}</div>
-          </div>;
-        })}
-      </div>
-    </div>
   </div>;
 }
 
@@ -1216,26 +1146,6 @@ function SettingsPage({app,setApp,back}){
     </div>
 
     <div className="card" style={{marginBottom:16}}>
-      <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>🎯 Ежедневная цель</h3>
-      <p style={{fontSize:12,color:'#999',marginBottom:10}}>Сколько слов учить/повторять в день</p>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-        {[3,5,10,15,20].map(g=>(
-          <button key={g} onClick={()=>{const na={...app,stats:{...app.stats,dailyGoal:g}};setApp(na);notify('✅ Цель обновлена');}}
-            style={{padding:'8px 16px',borderRadius:999,border:'none',cursor:'pointer',fontWeight:600,fontSize:13,
-              background:(app.stats.dailyGoal||5)===g?'#D4A5A5':'#f5f0ea',color:(app.stats.dailyGoal||5)===g?'#fff':'#888'}}>
-            {g}
-          </button>
-        ))}
-      </div>
-    </div>
-    <div className="card" style={{marginBottom:16}}>
-      <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>🌙 Тёмная тема</h3>
-      <button className="btn" style={{width:'100%',padding:12,fontSize:14,background:app.dark?'#2a2522':'#f5f0ea',color:app.dark?'#e8e0d5':'#4A443F',borderRadius:'999px'}}
-        onClick={()=>{const na={...app,dark:!app.dark};setApp(na);}}>
-        {app.dark?'☀️ Светлая тема':'🌙 Тёмная тема'}
-      </button>
-    </div>
-    <div className="card" style={{marginBottom:16}}>
       <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>Данные</h3>
       <p style={{fontSize:13,color:'#888'}}>Слов: {app.words.length} · Выучено: {app.words.filter(w=>w.learned).length} · Глаголов: {app.irregular.length}</p>
     </div>
@@ -1243,349 +1153,11 @@ function SettingsPage({app,setApp,back}){
   </div>;
 }
 
-function ChatPage({app,back}){
-  const GEMINI_KEY='AIzaSyAm4h0tyiycKI3dZoXcXv1f3edC6wpdXIg';
-  const LEVELS=['A1','A2','B1','B2','C1'];
-  const TOPICS=['🏠 Моя семья','🎮 Хобби и увлечения','📅 Как прошёл день','🌍 Путешествия','🍕 Еда и готовка','🎬 Фильмы и сериалы','📚 Учёба и работа','🐾 Животные','🌤️ Погода и природа','💭 Мечты и планы'];
-
-  const[mode,setMode]=useState(null); // null | 'text' | 'voice'
-  const[level,setLevel]=useState(()=>localStorage.getItem('chat-level')||'A2');
-  const[topic,setTopic]=useState(null);
-  const[messages,setMessages]=useState([]);
-  const[input,setInput]=useState('');
-  const[loading,setLoading]=useState(false);
-  const[recog,setRecog]=useState(false);
-  const[sessionScore,setSessionScore]=useState({turns:0,corrections:0});
-  const msgEndRef=React.useRef(null);
-  const inputRef=React.useRef(null);
-
-  // Auto-scroll
-  React.useEffect(()=>{msgEndRef.current?.scrollIntoView({behavior:'smooth'});},[messages]);
-
-  function saveLevel(l){setLevel(l);localStorage.setItem('chat-level',l);}
-
-  // Build system prompt
-  function buildSystem(){
-    const knownWords=app.words.filter(w=>w.learned).map(w=>w.en).slice(0,50).join(', ');
-    return `You are Lily — a friendly, warm English-speaking friend helping Arina (a Russian speaker) practice conversational English. 
-Current topic: ${topic||'free talk'}. 
-Arina's level: ${level}. Known words include: ${knownWords||'basic vocabulary'}.
-
-Rules:
-- ALWAYS respond in English, keep it natural and friendly like a real friend would
-- Match complexity to level: ${level==='A1'?'very simple short sentences, present tense only':level==='A2'?'simple sentences, common vocabulary':level==='B1'?'moderate complexity, some idioms ok':level==='B2'?'natural speech, idioms, varied tenses':'advanced natural English'}
-- If Arina makes a grammar mistake, gently correct it in a friendly way: say something like "Oh by the way, we usually say '...' 😊" — then continue the conversation naturally
-- Keep responses SHORT (2-4 sentences max) — you're chatting, not lecturing
-- Occasionally ask follow-up questions to keep conversation going
-- Be warm, curious, supportive — like a real friend
-- Never translate to Russian, always stay in English
-- At the end of your message add a tiny emoji reaction that fits the mood`;
-  }
-
-  async function sendMessage(text){
-    if(!text.trim()||loading)return;
-    const userMsg={role:'user',content:text.trim()};
-    const newMsgs=[...messages,userMsg];
-    setMessages(newMsgs);
-    setInput('');
-    setLoading(true);
-
-    try{
-      const history=newMsgs.map(m=>({role:m.role,parts:[{text:m.content}]}));
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          system_instruction:{parts:[{text:buildSystem()}]},
-          contents:history,
-          generationConfig:{temperature:0.85,maxOutputTokens:300}
-        })
-      });
-      const data=await res.json();
-      const reply=data.candidates?.[0]?.content?.parts?.[0]?.text||"I didn't catch that, could you say it again? 😊";
-      const botMsg={role:'model',content:reply};
-      setMessages(m=>[...m,botMsg]);
-      // Speak reply in voice mode
-      if(mode==='voice')speak(reply,'en-US');
-      // Track corrections
-      if(reply.toLowerCase().includes('we usually say')||reply.toLowerCase().includes('actually')){
-        setSessionScore(s=>({...s,corrections:s.corrections+1}));
-      }
-      setSessionScore(s=>({...s,turns:s.turns+1}));
-      // Auto-level-up logic: if 10+ turns with <20% corrections → suggest level up
-    }catch(e){
-      setMessages(m=>[...m,{role:'model',content:"Oops, something went wrong. Check your connection! 😅"}]);
-    }
-    setLoading(false);
-  }
-
-  function startVoiceInput(){
-    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SR)return;
-    if(startVoiceInput._r){try{startVoiceInput._r.abort();}catch(e){}startVoiceInput._r=null;}
-    setTimeout(()=>{
-      const r=new SR();
-      startVoiceInput._r=r;
-      r.lang='en-US';
-      r.continuous=false;
-      r.interimResults=false;
-      r.onresult=e=>{
-        startVoiceInput._r=null;
-        const t=Array.from(e.results).map(x=>x[0].transcript).join('').trim();
-        if(t)sendMessage(t);
-        setRecog(false);
-      };
-      r.onerror=()=>{startVoiceInput._r=null;setRecog(false);};
-      r.onend=()=>{startVoiceInput._r=null;setRecog(false);};
-      r.start();
-      setRecog(true);
-    },200);
-  }
-
-  // Opening greeting when topic selected
-  async function startChat(t){
-    setTopic(t);setMessages([]);setLoading(true);
-    try{
-      const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          system_instruction:{parts:[{text:buildSystem()}]},
-          contents:[{role:'user',parts:[{text:`Start our conversation about: ${t}. Open with a friendly greeting and a question to get me talking. Keep it short!`}]}],
-          generationConfig:{temperature:0.9,maxOutputTokens:150}
-        })
-      });
-      const data=await res.json();
-      const reply=data.candidates?.[0]?.content?.parts?.[0]?.text||"Hey! Let's talk 😊 How are you doing today?";
-      setMessages([{role:'model',content:reply}]);
-      if(mode==='voice')speak(reply,'en-US');
-    }catch(e){
-      setMessages([{role:'model',content:"Hey! Let's practice English together 😊 What's on your mind?"}]);
-    }
-    setLoading(false);
-  }
-
-  // ── Screens ──────────────────────────────────────────────────────────────
-  // Screen 0: choose mode
-  if(!mode) return(
-    <div className="fade-in">
-      <button className="back-btn" onClick={back} style={{marginBottom:16}}>&#8592; Назад</button>
-      <h2 className="section-title" style={{marginBottom:4}}>🤖 AI Chat</h2>
-      <p className="sub-text" style={{marginBottom:20,textAlign:'center'}}>Практикуй разговорный английский с ИИ-другом</p>
-
-      <div className="card" style={{marginBottom:16}}>
-        <div style={{fontSize:13,fontWeight:600,marginBottom:10,color:'#888'}}>Твой уровень</div>
-        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-          {LEVELS.map(l=>(
-            <button key={l} onClick={()=>saveLevel(l)}
-              style={{padding:'8px 16px',borderRadius:999,border:'none',cursor:'pointer',fontWeight:600,fontSize:13,
-                background:level===l?'#D4A5A5':'#f5f0ea',color:level===l?'#fff':'#888'}}>
-              {l}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{display:'flex',gap:12,marginBottom:8}}>
-        <button className="card btn" style={{flex:1,padding:20,textAlign:'center'}} onClick={()=>setMode('text')}>
-          <div style={{fontSize:28,marginBottom:6}}>✍️</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontStyle:'italic',fontSize:18}}>Text Chat</div>
-          <div style={{fontSize:12,color:'#999',marginTop:4}}>Переписка на английском</div>
-        </button>
-        <button className="card btn" style={{flex:1,padding:20,textAlign:'center'}} onClick={()=>setMode('voice')}>
-          <div style={{fontSize:28,marginBottom:6}}>🎙️</div>
-          <div style={{fontFamily:"'Playfair Display',serif",fontStyle:'italic',fontSize:18}}>Voice Chat</div>
-          <div style={{fontSize:12,color:'#999',marginTop:4}}>Разговор голосом</div>
-        </button>
-      </div>
-    </div>
-  );
-
-  // Screen 1: choose topic
-  if(mode&&!topic) return(
-    <div className="fade-in">
-      <button className="back-btn" onClick={()=>setMode(null)} style={{marginBottom:16}}>&#8592; Назад</button>
-      <h2 className="section-title" style={{marginBottom:4}}>{mode==='voice'?'🎙️ Voice Chat':'✍️ Text Chat'}</h2>
-      <p className="sub-text" style={{marginBottom:16,textAlign:'center'}}>О чём поговорим?</p>
-      <div style={{display:'flex',flexDirection:'column',gap:8}}>
-        {TOPICS.map(t=>(
-          <button key={t} className="card btn" style={{textAlign:'left',padding:'14px 16px',fontSize:14}}
-            onClick={()=>startChat(t)}>{t}</button>
-        ))}
-        <button className="card btn" style={{textAlign:'left',padding:'14px 16px',fontSize:14,color:'#999'}}
-          onClick={()=>startChat('free conversation — talk about anything')}>💬 Свободная тема</button>
-      </div>
-    </div>
-  );
-
-  // Screen 2: chat
-  return(
-    <div className="fade-in" style={{display:'flex',flexDirection:'column',height:'calc(100vh - 32px)'}}>
-      {/* Header */}
-      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12,flexShrink:0}}>
-        <button className="back-btn" onClick={()=>{setTopic(null);setMessages([]);}} style={{marginBottom:0}}>&#8592;</button>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:600,fontSize:14}}>{topic}</div>
-          <div style={{fontSize:11,color:'#bbb'}}>Level: {level} · {sessionScore.turns} turns{sessionScore.corrections>0?` · ${sessionScore.corrections} corrections`:''}</div>
-        </div>
-        <button onClick={()=>speak(messages[messages.length-1]?.content||'','en-US')}
-          style={{background:'none',border:'none',fontSize:18,cursor:'pointer',opacity:0.5}}>🔊</button>
-      </div>
-
-      {/* Messages */}
-      <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:10,paddingBottom:8}}>
-        {loading&&messages.length===0&&(
-          <div style={{textAlign:'center',padding:40,color:'#bbb',fontSize:14}}>Lily is thinking... 💭</div>
-        )}
-        {messages.map((m,i)=>(
-          <div key={i} style={{display:'flex',justifyContent:m.role==='user'?'flex-end':'flex-start'}}>
-            <div style={{maxWidth:'80%',padding:'10px 14px',borderRadius:m.role==='user'?'18px 18px 4px 18px':'18px 18px 18px 4px',
-              background:m.role==='user'?'#D4A5A5':'#f5f0ea',
-              color:m.role==='user'?'#fff':'#4A443F',fontSize:14,lineHeight:1.5}}>
-              {m.content}
-              {m.role==='model'&&(
-                <button onClick={()=>speak(m.content,'en-US')}
-                  style={{background:'none',border:'none',cursor:'pointer',fontSize:12,opacity:0.5,marginLeft:6,padding:0}}>🔊</button>
-              )}
-            </div>
-          </div>
-        ))}
-        {loading&&messages.length>0&&(
-          <div style={{display:'flex',justifyContent:'flex-start'}}>
-            <div style={{padding:'10px 14px',borderRadius:'18px 18px 18px 4px',background:'#f5f0ea',color:'#bbb',fontSize:14}}>
-              typing... 💭
-            </div>
-          </div>
-        )}
-        <div ref={msgEndRef}/>
-      </div>
-
-      {/* Input */}
-      <div style={{flexShrink:0,paddingTop:8,borderTop:'1px solid #f0ebe3'}}>
-        {mode==='voice'?(
-          <div style={{textAlign:'center',padding:'8px 0'}}>
-            <button className={`voice-btn btn ${recog?'listening':'idle'}`}
-              onClick={startVoiceInput} disabled={loading||recog}>🎤</button>
-            <p style={{fontSize:12,color:'#bbb',marginTop:6}}>{recog?'🎤 Listening...':loading?'Lily is replying...':'Tap to speak'}</p>
-          </div>
-        ):(
-          <div style={{display:'flex',gap:8}}>
-            <input ref={inputRef} type="text" value={input} onChange={e=>setInput(e.target.value)}
-              onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage(input);}}}
-              placeholder="Type in English..."
-              style={{flex:1,padding:'12px 16px',borderRadius:999,border:'1.5px solid #e0d6cc',fontSize:14,outline:'none'}}
-              disabled={loading}
-            />
-            <button className="btn btn-primary" style={{borderRadius:999,padding:'0 18px',fontSize:18}}
-              onClick={()=>sendMessage(input)} disabled={!input.trim()||loading}>➤</button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FlashPage({app,setApp,back}){
-  const allLearned=app.words.filter(w=>w.learned);
-  const[deck,setDeck]=useState(()=>shuffle([...allLearned]).slice(0,20));
-  const[idx,setIdx]=useState(0);
-  const[flipped,setFlipped]=useState(false);
-  const[done,setDone]=useState(false);
-  const[score,setScore]=useState({know:0,dunno:0});
-
-  if(allLearned.length===0) return(
-    <div className="fade-in">
-      <button className="back-btn" onClick={back} style={{marginBottom:16}}>&#8592; Назад</button>
-      <div className="card" style={{textAlign:'center',padding:40}}>
-        <div style={{fontSize:48,marginBottom:12}}>🃏</div>
-        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:20,marginBottom:8}}>Нет карточек</h2>
-        <p style={{color:'#999',fontSize:14}}>Сначала выучи несколько слов!</p>
-      </div>
-    </div>
-  );
-
-  const cur=deck[idx];
-
-  function answer(know){
-    const ns={...score,know:score.know+(know?1:0),dunno:score.dunno+(know?0:1)};
-    setScore(ns);
-    if(idx+1>=deck.length){setDone(true);}
-    else{setFlipped(false);setTimeout(()=>setIdx(i=>i+1),150);}
-  }
-
-  function restart(){
-    setDeck(shuffle([...allLearned]).slice(0,20));
-    setIdx(0);setFlipped(false);setDone(false);setScore({know:0,dunno:0});
-  }
-
-  if(done) return(
-    <div className="fade-in">
-      <button className="back-btn" onClick={back} style={{marginBottom:16}}>&#8592; Назад</button>
-      <div className="card" style={{textAlign:'center',padding:32}}>
-        <div style={{fontSize:48,marginBottom:12}}>{score.know>=score.dunno?'🏆':'💪'}</div>
-        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,marginBottom:16}}>Сессия завершена!</h2>
-        <div style={{display:'flex',justifyContent:'center',gap:32,marginBottom:24}}>
-          <div><div style={{fontSize:28,fontWeight:700,color:'#94A187'}}>{score.know}</div><div style={{fontSize:12,color:'#999'}}>Знаю</div></div>
-          <div><div style={{fontSize:28,fontWeight:700,color:'#D4A5A5'}}>{score.dunno}</div><div style={{fontSize:12,color:'#999'}}>Не помню</div></div>
-        </div>
-        <button className="btn btn-primary" style={{width:'100%',padding:14,marginBottom:8}} onClick={restart}>Ещё раз 🔄</button>
-        <button className="btn btn-ghost" style={{width:'100%',padding:12}} onClick={back}>На главную</button>
-      </div>
-    </div>
-  );
-
-  return(
-    <div className="fade-in">
-      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:16}}>
-        <button className="back-btn" onClick={back} style={{marginBottom:0}}>&#8592;</button>
-        <div style={{flex:1}}>
-          <div style={{fontSize:13,fontWeight:600}}>🃏 Flashcards</div>
-          <div style={{fontSize:11,color:'#bbb'}}>{idx+1} / {deck.length}</div>
-        </div>
-        <div style={{fontSize:13,color:'#94A187',fontWeight:600}}>{score.know} ✓</div>
-      </div>
-      <div className="progress-bar" style={{marginBottom:20}}>
-        <div className="progress-fill" style={{width:`${((idx)/deck.length)*100}%`}}/>
-      </div>
-      {/* Card */}
-      <div onClick={()=>{if(!flipped){setFlipped(true);speak(cur.en,'en-US');}}}
-        style={{cursor:'pointer',marginBottom:20}}>
-        <div className="card" style={{textAlign:'center',padding:'48px 24px',minHeight:200,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',transition:'all .3s',background:flipped?'rgba(148,161,135,.15)':'rgba(255,255,255,.7)'}}>
-          {!flipped?(
-            <>
-              <div style={{fontSize:11,textTransform:'uppercase',letterSpacing:'.1em',color:'#bbb',marginBottom:12}}>Что это значит?</div>
-              <div style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:700,color:'#4A443F'}}>{cur.en}</div>
-              <div style={{fontSize:12,color:'#bbb',marginTop:16}}>Нажми чтобы перевернуть</div>
-            </>
-          ):(
-            <>
-              <div style={{fontSize:11,textTransform:'uppercase',letterSpacing:'.1em',color:'#94A187',marginBottom:12}}>Перевод</div>
-              <div style={{fontFamily:"'Playfair Display',serif",fontSize:32,fontWeight:700,color:'#4A443F',marginBottom:8}}>{cur.ru}</div>
-              <div style={{fontSize:18,color:'#D4A5A5',marginBottom:4}}>{cur.en}</div>
-              {cur.note&&<div style={{fontSize:13,color:'#999',fontStyle:'italic',marginTop:8}}>{cur.note}</div>}
-              <button onClick={e=>{e.stopPropagation();speak(cur.en,'en-US');}} style={{marginTop:12,background:'none',border:'none',cursor:'pointer',fontSize:18,opacity:0.5}}>🔊</button>
-            </>
-          )}
-        </div>
-      </div>
-      {flipped&&(
-        <div style={{display:'flex',gap:12}}>
-          <button className="btn" style={{flex:1,padding:16,fontSize:15,background:'rgba(212,165,165,.15)',color:'#D4A5A5',borderRadius:'1.5rem',fontWeight:600,border:'2px solid rgba(212,165,165,.3)'}}
-            onClick={()=>answer(false)}>✗ Не помню</button>
-          <button className="btn" style={{flex:1,padding:16,fontSize:15,background:'rgba(148,161,135,.15)',color:'#94A187',borderRadius:'1.5rem',fontWeight:600,border:'2px solid rgba(148,161,135,.3)'}}
-            onClick={()=>answer(true)}>✓ Знаю!</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function App(){
   const[app,setAppRaw]=useState(initApp);
   const[view,setView]=useState('home');
   const[sessionType,setSessionType]=useState('learn');
   const[welcome,setWelcome]=useState(false);
-  useEffect(()=>{applyDark(app.dark);},[app.dark]);
   useEffect(()=>{
     const today=todayStr();
     const last=app.stats.lastVisit;
@@ -1598,30 +1170,9 @@ function App(){
       if(Object.keys(app.stats.daily||{}).length>0)setWelcome(true);
     }
   },[]);
-  const[newAch,setNewAch]=useState(null);
-  const setApp=useCallback((a)=>{
-    const gained=checkAchievements(a);
-    let final=a;
-    if(gained.length){
-      final={...a,achievements:[...(a.achievements||[]),...gained]};
-      const ac=ACHIEVEMENTS.find(x=>x.id===gained[0]);
-      if(ac)setNewAch(ac);
-    }
-    setAppRaw(final);saveData(final);
-  },[]);
+  const setApp=useCallback((a)=>{setAppRaw(a);saveData(a);},[]);
   function start(t){setSessionType(t);setView('study');}
   return<div className="app">
-    {newAch&&(
-      <div className="overlay" onClick={()=>setNewAch(null)}>
-        <div className="card overlay-card" style={{textAlign:'center',padding:32}} onClick={e=>e.stopPropagation()}>
-          <div style={{fontSize:56,marginBottom:8}}>{newAch.icon}</div>
-          <div style={{fontSize:11,textTransform:'uppercase',letterSpacing:'.12em',color:'#D4A5A5',fontWeight:700,marginBottom:4}}>Achievement unlocked!</div>
-          <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:22,marginBottom:8}}>{newAch.name}</h2>
-          <p style={{color:'#888',fontSize:14,marginBottom:20}}>{newAch.desc}</p>
-          <button className="btn btn-primary" style={{width:'100%',padding:14}} onClick={()=>setNewAch(null)}>Awesome! 🎉</button>
-        </div>
-      </div>
-    )}
     {welcome&&(
       <div className="overlay" onClick={()=>setWelcome(false)}>
         <div className="card overlay-card" style={{textAlign:'center'}} onClick={e=>e.stopPropagation()}>
@@ -1632,15 +1183,13 @@ function App(){
         </div>
       </div>
     )}
-    {view==='home'&&<HomePage app={app} go={setView} start={start} setApp={setApp}/>}
+    {view==='home'&&<HomePage app={app} go={setView} start={start}/>}
     {view==='study'&&<StudyPage app={app} setApp={setApp} sessionType={sessionType} exit={()=>setView('home')}/>}
     {view==='words'&&<WordsPage app={app} setApp={setApp} back={()=>setView('home')}/>}
     {view==='add'&&<AddPage app={app} setApp={setApp} back={()=>setView('home')}/>}
     {view==='irregular'&&<IrregularPage app={app} setApp={setApp} back={()=>setView('home')}/>}
     {view==='stats'&&<StatsPage app={app} back={()=>setView('home')}/>}
     {view==='settings'&&<SettingsPage app={app} setApp={setApp} back={()=>setView('home')}/>}
-      {view==='chat'&&<ChatPage app={app} back={()=>setView('home')}/>}
-      {view==='flash'&&<FlashPage app={app} setApp={setApp} back={()=>setView('home')}/>}
   </div>;
 }
 
