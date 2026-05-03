@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>My English Journal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#FDFBF7;color:#4A443F;min-height:100vh;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+.app{max-width:600px;margin:0 auto;padding:16px 16px 80px}
+.card{background:rgba(255,255,255,.7);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.8);border-radius:2rem;padding:1.5rem;box-shadow:0 8px 30px rgba(0,0,0,.04)}
+.btn{transition:all .2s;cursor:pointer;border:none;font-family:inherit;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:#D4A5A5;color:#fff;border-radius:999px;padding:12px 24px;font-weight:600;box-shadow:0 4px 15px rgba(212,165,165,.3)}
+.btn-secondary{background:#94A187;color:#fff;border-radius:999px;padding:12px 24px;font-weight:600;box-shadow:0 4px 15px rgba(148,161,135,.3)}
+.btn-outline{background:transparent;border:2px solid #F5E6D3;color:#4A443F;border-radius:999px;padding:10px 20px;font-weight:500}
+.btn-ghost{background:transparent;color:#94A187;padding:4px 8px;font-size:14px}
+.btn-sm{padding:6px 12px;font-size:13px}
+.input{width:100%;padding:12px 16px;border:1px solid rgba(245,230,211,.5);background:rgba(253,251,247,.5);border-radius:1rem;font-size:15px;color:#4A443F;outline:none;font-family:inherit}
+.input:focus{border-color:rgba(212,165,165,.4);box-shadow:0 0 0 2px rgba(212,165,165,.15)}
+.textarea{width:100%;padding:16px;border:1px solid rgba(245,230,211,.5);background:rgba(253,251,247,.5);border-radius:1rem;font-size:14px;color:#4A443F;outline:none;font-family:'Inter',monospace;resize:vertical}
+.select{padding:10px 14px;border:1px solid rgba(245,230,211,.5);background:#fff;border-radius:1rem;font-size:13px;color:#4A443F;outline:none;font-family:inherit;cursor:pointer}
+.tabs{display:flex;gap:4px;padding:4px;background:rgba(245,230,211,.3);border-radius:999px}
+.tab{flex:1;padding:10px;border-radius:999px;font-size:14px;font-weight:500;text-align:center;cursor:pointer;border:none;background:transparent;color:#888;transition:all .2s;font-family:inherit}
+.tab.active{background:#fff;color:#D4A5A5;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.grid-2{display:grid;grid-cols:2;gap:12px}
+.stat-box{text-align:center;padding:16px}
+.stat-num{font-size:28px;font-family:'Playfair Display',serif;font-weight:700}
+.stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#999;margin-top:4px}
+.divider{width:1px;height:32px;background:#F5E6D3}
+.fade-in{animation:fi .3s ease}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.progress-bar{height:4px;background:rgba(245,230,211,.3);border-radius:999px;overflow:hidden}
+.progress-fill{height:100%;background:#D4A5A5;border-radius:999px;transition:width .5s}
+.badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(245,230,211,.4);color:#4A443F}
+.word-row{display:flex;align-items:center;gap:8px;padding:8px;background:rgba(253,251,247,.5);border-radius:12px;margin-bottom:6px}
+.word-row input{flex:1;border:none;background:transparent;padding:4px 8px;font-size:14px;color:#4A443F;outline:none}
+.word-row input:focus{background:rgba(245,230,211,.3);border-radius:8px}
+.word-row .en{font-weight:600}
+.word-row .ru{color:#888}
+.word-row .del{color:#D4A5A5;cursor:pointer;font-size:18px;padding:0 4px;background:none;border:none}
+.overlay{position:fixed;inset:0;background:rgba(74,68,63,.2);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:100;padding:24px}
+.overlay-card{max-width:400px;width:100%}
+.chart-bar{display:flex;align-items:flex-end;gap:2px;height:100px}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center}
+.chart-label{font-size:9px;color:#aaa;margin-top:4px}
+.section-title{font-family:'Playfair Display',serif;font-style:italic;font-size:20px;color:#4A443F;margin-bottom:8px}
+.sub-text{font-size:12px;color:#999;text-transform:uppercase;letter-spacing:.1em}
+.menu-card{background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.8);border-radius:2rem;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,.04);text-align:center;cursor:pointer;transition:all .2s}
+.menu-card:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.06)}
+.menu-card .icon{font-size:24px;margin-bottom:8px}
+.menu-card .title{font-family:'Playfair Display',serif;font-style:italic;font-size:16px;color:#4A443F}
+.menu-card .sub{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
+.study-card{min-height:260px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20px 0}
+.study-word{font-family:'Playfair Display',serif;font-style:italic;font-size:36px;color:#4A443F;line-height:1.3}
+.choice-btn{width:100%;padding:16px 20px;border:1px solid rgba(245,230,211,.5);background:rgba(255,255,255,.7);border-radius:2rem;text-align:left;font-size:15px;color:#4A443F;cursor:pointer;transition:all .2s;font-family:inherit}
+.choice-btn:hover{background:rgba(245,230,211,.3)}
+.voice-btn{width:96px;height:96px;border-radius:50%;font-size:32px;margin:0 auto;display:flex;align-items:center;justify-content:center}
+.voice-btn.listening{background:#D4A5A5;color:#fff;animation:pulse 1.5s infinite}
+.voice-btn.idle{background:#fff;color:#D4A5A5;border:4px solid rgba(212,165,165,.15)}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.back-btn{color:#94A187;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;cursor:pointer;border:none;background:none;font-family:inherit}
+.irregular-table{width:100%;font-size:13px;border-collapse:collapse}
+.irregular-table th{padding:8px;text-align:left;font-weight:600;color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.irregular-table td{padding:8px;border-top:1px solid #f0ebe3}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#4A443F;color:#fff;padding:12px 24px;border-radius:999px;font-size:14px;z-index:300;animation:fi .3s;pointer-events:none}
+.hidden-input{display:none}
+.speak-btn{cursor:pointer;border:none;background:none;font-size:16px;padding:2px}
+.hint-box{margin-top:12px;background:rgba(212,165,165,.12);border:1px solid rgba(212,165,165,.25);border-radius:12px;padding:10px 18px;font-size:15px;color:#D4A5A5;font-weight:600;display:inline-block}
+details{margin-top:12px}
+details summary{cursor:pointer;font-size:12px;color:#bbb}
+details pre{white-space:pre-wrap;font-size:11px;color:#999;margin-top:8px;max-height:200px;overflow:auto}
+.recog-error{background:rgba(212,165,165,.1);border:1px solid rgba(212,165,165,.3);border-radius:12px;padding:12px;margin-top:12px;text-align:center}
+.recog-error .msg{font-size:14px;color:#D4A5A5;margin-bottom:4px}
+.recog-error .sub{font-size:12px;color:#999}
+@media(max-width:480px){
+  .app{padding:12px 12px 80px}
+  .card{padding:1.2rem;border-radius:1.5rem}
+  .study-word{font-size:28px}
+  .stat-num{font-size:22px}
+  .menu-card{padding:14px;border-radius:1.5rem}
+  .menu-card .icon{font-size:20px}
+  .menu-card .title{font-size:14px}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useMemo,useRef,useCallback}=React;
+
+const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
+const todayStr=()=>new Date().toISOString().slice(0,10);
+const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
+const normalize=s=>s.toLowerCase().trim().replace(/[.,!?;:'"`]/g,'').replace(/\s+/g,' ');
+const isCorrect=(ans,exp)=>{const a=normalize(ans);const v=exp.split(/[,/;]|\s\(|\)/g).map(normalize).filter(Boolean);return v.some(x=>x===a||a.includes(x)||x.includes(a));};
+
+const POS={verb:'Глагол',phrasal_verb:'Фразовый глагол',noun:'Существительное',adjective:'Прилагательное',adverb:'Наречие',participle:'Причастие',phrase:'Фраза'};
+const TOPICS={home:'Дом',hobby:'Хобби',weather:'Погода',study:'Учёба',work:'Работа',food:'Еда',time:'Время',family:'Семья',travel:'Путешествия',general:'Общее'};
+const TE={home:'🏠',hobby:'🎨',weather:'🌦',study:'📚',work:'💼',food:'🍽',time:'⏰',family:'👨‍‍👧',travel:'✈️',general:'🌐'};
+
+const SEED_WORDS=[
+  {en:'kitchen',ru:'кухня',pos:'noun',topic:'home'},
+  {en:'living room',ru:'гостиная',pos:'noun',topic:'home'},
+  {en:'wall',ru:'стена',pos:'noun',topic:'home'},
+  {en:'look up to',ru:'восхищаться',pos:'phrasal_verb',topic:'home'},
+  {en:'look into',ru:'исследовать',pos:'phrasal_verb',topic:'home'},
+  {en:'clean',ru:'убирать',pos:'verb',topic:'home'},
+  {en:'dust',ru:'вытирать пыль',pos:'verb',topic:'home'},
+  {en:'feed',ru:'кормить',pos:'verb',topic:'home'},
+  {en:'get up',ru:'вставать',pos:'phrasal_verb',topic:'home'},
+  {en:'put away',ru:'убрать вещи на место',pos:'phrasal_verb',topic:'home'},
+  {en:'share',ru:'делить',pos:'verb',topic:'home'},
+  {en:'tidy',ru:'убирать, чистить',pos:'verb',topic:'home'},
+  {en:'wash',ru:'мыть',pos:'verb',topic:'home'},
+  {en:'water',ru:'поливать',pos:'verb',topic:'home'},
+  {en:'comfortable',ru:'комфортный, удобный',pos:'adjective',topic:'home'},
+  {en:'daily',ru:'ежедневный',pos:'adjective',topic:'time'},
+  {en:'amazing',ru:'чудесный, прекрасный',pos:'adjective',topic:'general'},
+  {en:'boring',ru:'скучный',pos:'adjective',topic:'general'},
+  {en:'difficult',ru:'сложный',pos:'adjective',topic:'general'},
+  {en:'tired',ru:'уставший',pos:'adjective',topic:'general'},
+  {en:'exciting',ru:'увлекательный',pos:'adjective',topic:'general'},
+  {en:'funny',ru:'смешной',pos:'adjective',topic:'general'},
+  {en:'lovely',ru:'милый, прекрасный',pos:'adjective',topic:'general'},
+  {en:'really',ru:'реально, на самом деле',pos:'adverb',topic:'general'},
+  {en:'mouth',ru:'рот',pos:'noun',topic:'general'},
+  {en:'learn',ru:'учить',pos:'verb',topic:'study'},
+  {en:'the drums',ru:'барабаны',pos:'noun',topic:'hobby'},
+  {en:'guitar',ru:'гитара',pos:'noun',topic:'hobby'},
+  {en:'piano',ru:'пианино',pos:'noun',topic:'hobby'},
+  {en:'trumpet',ru:'труба',pos:'noun',topic:'hobby'},
+  {en:'violin',ru:'скрипка',pos:'noun',topic:'hobby'},
+  {en:'theatre',ru:'театр',pos:'noun',topic:'hobby'},
+  {en:'song',ru:'песня',pos:'noun',topic:'hobby'},
+  {en:'draw',ru:'рисовать',pos:'verb',topic:'hobby'},
+  {en:'enjoy',ru:'наслаждаться',pos:'verb',topic:'hobby'},
+  {en:'go out',ru:'выходить куда-то',pos:'phrasal_verb',topic:'hobby'},
+  {en:'laugh',ru:'смеяться',pos:'verb',topic:'hobby'},
+  {en:'paint',ru:'рисовать красками',pos:'verb',topic:'hobby'},
+  {en:'relax',ru:'расслабляться',pos:'verb',topic:'hobby'},
+  {en:'sing',ru:'петь',pos:'verb',topic:'hobby'},
+  {en:'stay in',ru:'остаться дома',pos:'phrasal_verb',topic:'hobby'},
+  {en:'bicycle',ru:'велосипед',pos:'noun',topic:'hobby'},
+  {en:'bike',ru:'велосипед (сокр.)',pos:'noun',topic:'hobby'},
+  {en:'ride a bike',ru:'кататься на велосипеде',pos:'phrase',topic:'hobby'},
+  {en:'fast',ru:'быстро',pos:'adverb',topic:'general'},
+  {en:'birthday party',ru:'вечеринка в честь дня рождения',pos:'noun',topic:'hobby'},
+  {en:'board game',ru:'настольная игра',pos:'noun',topic:'hobby'},
+  {en:'computer game',ru:'компьютерная игра',pos:'noun',topic:'hobby'},
+  {en:'video game',ru:'видеоигра',pos:'noun',topic:'hobby'},
+  {en:'camera',ru:'камера',pos:'noun',topic:'hobby'},
+  {en:'cartoon',ru:'мультик',pos:'noun',topic:'hobby'},
+  {en:'cinema',ru:'кинотеатр',pos:'noun',topic:'hobby'},
+  {en:'disco',ru:'дискотека',pos:'noun',topic:'hobby'},
+  {en:'film',ru:'фильм',pos:'noun',topic:'hobby'},
+  {en:'folk music',ru:'народная музыка',pos:'noun',topic:'hobby'},
+  {en:'pop music',ru:'поп-музыка',pos:'noun',topic:'hobby'},
+  {en:'rap music',ru:'рэп',pos:'noun',topic:'hobby'},
+  {en:'rock music',ru:'рок-музыка',pos:'noun',topic:'hobby'},
+  {en:'free time',ru:'свободное время',pos:'noun',topic:'hobby'},
+  {en:'hobby',ru:'хобби',pos:'noun',topic:'hobby'},
+  {en:'pancakes',ru:'блины',pos:'noun',topic:'food'},
+  {en:'cottage cheese pancakes',ru:'сырники',pos:'noun',topic:'food'},
+  {en:'nuts',ru:'орехи',pos:'noun',topic:'food'},
+  {en:'cottage cheese',ru:'творог',pos:'noun',topic:'food'},
+  {en:'have dinner',ru:'ужинать',pos:'phrase',topic:'food'},
+  {en:'have lunch',ru:'обедать',pos:'phrase',topic:'food'},
+  {en:'cutlets',ru:'котлеты',pos:'noun',topic:'food'},
+  {en:'fried',ru:'жареный',pos:'adjective',topic:'food'},
+  {en:'teach',ru:'преподавать',pos:'verb',topic:'study'},
+  {en:'German',ru:'немец, немецкий',pos:'noun',topic:'general'},
+  {en:'at the moment',ru:'в данный момент',pos:'phrase',topic:'time'},
+  {en:'now',ru:'сейчас',pos:'adverb',topic:'time'},
+  {en:'right now',ru:'прямо сейчас',pos:'phrase',topic:'time'},
+  {en:'today',ru:'сегодня',pos:'adverb',topic:'time'},
+  {en:"it's foggy",ru:'туманно',pos:'phrase',topic:'weather'},
+  {en:"it's misty",ru:'лёгкий туман',pos:'phrase',topic:'weather'},
+  {en:"it's hazy",ru:'туман с дымкой',pos:'phrase',topic:'weather'},
+  {en:"it's chilly",ru:'прохладно',pos:'phrase',topic:'weather'},
+  {en:'away',ru:'в отъезде',pos:'adverb',topic:'general'},
+  {en:'stay',ru:'оставаться',pos:'verb',topic:'general'},
+];
+
+const SEED_IRREGULAR=[
+  {base:'be',past:'was/were',participle:'been',ru:'быть'},
+  {base:'become',past:'became',participle:'become',ru:'становиться'},
+  {base:'begin',past:'began',participle:'begun',ru:'начинать'},
+  {base:'break',past:'broke',participle:'broken',ru:'ломать'},
+  {base:'bring',past:'brought',participle:'brought',ru:'приносить'},
+  {base:'build',past:'built',participle:'built',ru:'строить'},
+  {base:'buy',past:'bought',participle:'bought',ru:'покупать'},
+  {base:'catch',past:'caught',participle:'caught',ru:'ловить'},
+  {base:'choose',past:'chose',participle:'chosen',ru:'выбирать'},
+  {base:'come',past:'came',participle:'come',ru:'приходить'},
+  {base:'do',past:'did',participle:'done',ru:'делать'},
+  {base:'draw',past:'drew',participle:'drawn',ru:'рисовать'},
+  {base:'drink',past:'drank',participle:'drunk',ru:'пить'},
+  {base:'drive',past:'drove',participle:'driven',ru:'водить'},
+  {base:'eat',past:'ate',participle:'eaten',ru:'есть'},
+  {base:'fall',past:'fell',participle:'fallen',ru:'падать'},
+  {base:'feel',past:'felt',participle:'felt',ru:'чувствовать'},
+  {base:'find',past:'found',participle:'found',ru:'находить'},
+  {base:'fly',past:'flew',participle:'flown',ru:'летать'},
+  {base:'forget',past:'forgot',participle:'forgotten',ru:'забывать'},
+  {base:'get',past:'got',participle:'got/gotten',ru:'получать'},
+  {base:'give',past:'gave',participle:'given',ru:'давать'},
+  {base:'go',past:'went',participle:'gone',ru:'идти'},
+  {base:'grow',past:'grew',participle:'grown',ru:'расти'},
+  {base:'have',past:'had',participle:'had',ru:'иметь'},
+  {base:'hear',past:'heard',participle:'heard',ru:'слышать'},
+  {base:'hold',past:'held',participle:'held',ru:'держать'},
+  {base:'keep',past:'kept',participle:'kept',ru:'хранить'},
+  {base:'know',past:'knew',participle:'known',ru:'знать'},
+  {base:'leave',past:'left',participle:'left',ru:'покидать'},
+  {base:'lose',past:'lost',participle:'lost',ru:'терять'},
+  {base:'make',past:'made',participle:'made',ru:'делать'},
+  {base:'meet',past:'met',participle:'met',ru:'встречать'},
+  {base:'pay',past:'paid',participle:'paid',ru:'платить'},
+  {base:'put',past:'put',participle:'put',ru:'класть'},
+  {base:'read',past:'read',participle:'read',ru:'читать'},
+  {base:'ride',past:'rode',participle:'ridden',ru:'кататься'},
+  {base:'run',past:'ran',participle:'run',ru:'бегать'},
+  {base:'say',past:'said',participle:'said',ru:'сказать'},
+  {base:'see',past:'saw',participle:'seen',ru:'видеть'},
+  {base:'sell',past:'sold',participle:'sold',ru:'продавать'},
+  {base:'send',past:'sent',participle:'sent',ru:'отправлять'},
+  {base:'sing',past:'sang',participle:'sung',ru:'петь'},
+  {base:'sit',past:'sat',participle:'sat',ru:'сидеть'},
+  {base:'sleep',past:'slept',participle:'slept',ru:'спать'},
+  {base:'speak',past:'spoke',participle:'spoken',ru:'говорить'},
+  {base:'spend',past:'spent',participle:'spent',ru:'тратить'},
+  {base:'stand',past:'stood',participle:'stood',ru:'стоять'},
+  {base:'swim',past:'swam',participle:'swum',ru:'плавать'},
+  {base:'take',past:'took',participle:'taken',ru:'брать'},
+  {base:'tell',past:'told',participle:'told',ru:'рассказывать'},
+  {base:'think',past:'thought',participle:'thought',ru:'думать'},
+  {base:'understand',past:'understood',participle:'understood',ru:'понимать'},
+  {base:'wake',past:'woke',participle:'woken',ru:'просыпаться'},
+  {base:'wear',past:'wore',participle:'worn',ru:'носить'},
+  {base:'win',past:'won',participle:'won',ru:'побеждать'},
+  {base:'write',past:'wrote',participle:'written',ru:'писать'},
+];
+
+function loadData(){try{const r=localStorage.getItem('my-eng-v2');if(r)return JSON.parse(r);}catch(e){}return null;}
+function saveData(d){localStorage.setItem('my-eng-v2',JSON.stringify(d));}
+function initApp(){
+  const d=loadData();
+  if(d&&d.words&&d.irregular)return d;
+  const words=SEED_WORDS.map(w=>({id:uid(),en:w.en,ru:w.ru,partOfSpeech:w.pos,topic:w.topic,note:'',learned:false,learnedDate:null,lastReviewed:null,correct:0,wrong:0,streak:0,created:new Date().toISOString()}));
+  const irregular=SEED_IRREGULAR.map(v=>({id:uid(),...v,learned:false}));
+  return{words,irregular,stats:{days:[],streak:0,best:0,daily:{},tests:[],lastVisit:null},version:2};
+}
+
+function speak(text,lang){
+  try{const u=new SpeechSynthesisUtterance(text);u.lang=lang||'en-US';u.rate=0.85;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(e){}
+}
+function beep(ok){
+  try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.setValueAtTime(ok?660:220,c.currentTime);o.frequency.setValueAtTime(ok?880:180,c.currentTime+0.08);g.gain.setValueAtTime(0.12,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.2);o.start();o.stop(c.currentTime+0.2);}catch(e){}
+}
+
+function Toast({msg}){if(!msg)return null;return<div className="toast">{msg}</div>;}
+
+function getNextReviewTime(w){
+  // Returns ms until word is due, or 0 if due now
+  if(!w.learned)return Infinity;
+  const now=Date.now();
+  const learnedAt=w.learnedDate?new Date(w.learnedDate).getTime():now;
+  const lastRev=w.lastReviewed?new Date(w.lastReviewed).getTime():learnedAt;
+  const iv=[24,48,96,168,336,720]; // hours between reviews
+  const hours=iv[Math.min(Math.max(w.streak-1,0),iv.length-1)];
+  const due=lastRev+(hours*3600*1000);
+  return Math.max(0,due-now);
+}
+function formatTimeLeft(ms){
+  if(ms<=0)return'сейчас';
+  const h=Math.ceil(ms/3600000);
+  if(h<24)return'через '+h+' ч';
+  return'через '+Math.ceil(h/24)+' дн';
+}
+function HomePage({app,go,start}){
+  const[recallInfo,setRecallInfo]=useState(false);
+  const learned=app.words.filter(w=>w.learned).length;
+  const today=todayStr();
+  const todayLearned=app.words.filter(w=>w.learnedDate===today).length;
+  const newWords=app.words.filter(w=>!w.learned);
+  // Due now = learned words where next review time is 0
+  const reviewWords=app.words.filter(w=>w.learned&&getNextReviewTime(w)===0);
+  // Next upcoming = earliest non-due learned word
+  const upcoming=learned>0&&reviewWords.length===0
+    ?app.words.filter(w=>w.learned&&getNextReviewTime(w)>0)
+        .sort((a,b)=>getNextReviewTime(a)-getNextReviewTime(b))[0]
+    :null;
+  const recallActive=reviewWords.length>0;
+  return(
+    <div className="fade-in">
+      <div style={{textAlign:'center',paddingTop:16,paddingBottom:24}}>
+        <h1 className="font-serif italic text-4xl" style={{color:'#4A443F'}}>My English Journal</h1>
+        <p className="sub-text" style={{color:'#94A187',marginTop:6}}>{new Date().toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})}</p>
+      </div>
+      <div style={{display:'flex',justifyContent:'space-around',padding:'16px 0'}}>
+        <div className="stat-box"><div className="stat-num" style={{color:'#D4A5A5'}}>{learned}</div><div className="stat-label">выучено</div></div>
+        <div className="divider"></div>
+        <div className="stat-box"><div className="stat-num" style={{color:'#94A187'}}>{todayLearned}</div><div className="stat-label">сегодня</div></div>
+        <div className="divider"></div>
+        <div className="stat-box"><div className="stat-num" style={{color:'#B8B5D0'}}>{app.stats.streak||0}</div><div className="stat-label">серия</div></div>
+      </div>
+      <div style={{marginBottom:24}}>
+        <button className="btn btn-primary" style={{width:'100%',padding:'20px 24px',textAlign:'left',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'2rem',fontSize:16,marginBottom:12}}
+          onClick={()=>start('learn')} disabled={newWords.length===0}>
+          <div><div style={{fontFamily:"'Playfair Display',serif",fontStyle:'italic',fontSize:22,color:'#fff'}}>Study</div><div style={{fontSize:14,opacity:0.9}}>Новые слова — {newWords.length} карточек</div></div>
+          <span style={{fontSize:28,opacity:0.8}}>&#8594;</span>
+        </button>
+        {/* Recall button — always visible, tappable when inactive to show schedule */}
+        <button className="btn" style={{width:'100%',padding:'20px 24px',textAlign:'left',display:'flex',justifyContent:'space-between',alignItems:'center',borderRadius:'2rem',fontSize:16,
+            background:recallActive?'#94A187':'rgba(180,180,180,0.18)',
+            color:recallActive?'#fff':'#999',
+            boxShadow:recallActive?'0 4px 15px rgba(148,161,135,.3)':'none',
+            border:recallActive?'none':'2px dashed rgba(180,180,180,0.35)',
+            cursor:'pointer'}}
+          onClick={()=>{if(recallActive)start('review');else setRecallInfo(r=>!r);}}>
+          <div>
+            <div style={{fontFamily:"'Playfair Display',serif",fontStyle:'italic',fontSize:22}}>{recallActive?'Recall ✨':'Recall'}</div>
+            <div style={{fontSize:14,opacity:0.85,marginTop:2}}>
+              {learned===0?'Сначала выучи слова 📚'
+               :recallActive?reviewWords.length+' слов ждут повторения'
+               :upcoming?'Следующее '+formatTimeLeft(getNextReviewTime(upcoming))
+               :'Повторение не нужно'}
+            </div>
+          </div>
+          <span style={{fontSize:28,opacity:recallActive?0.8:0.3}}>&#8634;</span>
+        </button>
+        {/* Info panel when tapping inactive Recall */}
+        {recallInfo&&!recallActive&&learned>0&&(
+          <div className="card fade-in" style={{marginTop:8,padding:14,fontSize:13}}>
+            <div style={{fontWeight:600,marginBottom:8,color:'#94A187'}}>📅 Расписание повторений</div>
+            {app.words.filter(w=>w.learned).sort((a,b)=>getNextReviewTime(a)-getNextReviewTime(b)).slice(0,5).map(w=>(
+              <div key={w.id} style={{display:'flex',justifyContent:'space-between',padding:'4px 0',borderBottom:'1px solid #f0ebe3'}}>
+                <span style={{fontWeight:500}}>{w.en}</span>
+                <span style={{color:'#999'}}>{formatTimeLeft(getNextReviewTime(w))}</span>
+              </div>
+            ))}
+            {app.words.filter(w=>w.learned).length>5&&<div style={{color:'#bbb',marginTop:6,fontSize:12}}>и ещё {app.words.filter(w=>w.learned).length-5} слов...</div>}
+          </div>
+        )}
+      </div>
+      <div className="grid-2">
+        {[{icon:'📖',title:'Dictionary',sub:'Словарь',v:'words'},{icon:'✨',title:'Add New',sub:'Добавить',v:'add'},{icon:'📝',title:'Verbs',sub:'Глаголы',v:'irregular'},{icon:'📈',title:'Insights',sub:'Статистика',v:'stats'}].map(m=>(
+          <div key={m.v} className="menu-card" onClick={()=>go(m.v)}>
+            <div className="icon">{m.icon}</div>
+            <div className="title">{m.title}</div>
+            <div className="sub">{m.sub}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{marginTop:16}}>
+        <button className="btn btn-ghost" style={{width:'100%',padding:12,fontSize:13}} onClick={()=>go('settings')}>⚙️ Настройки и синхронизация</button>
+      </div>
+    </div>
+  );
+}
+
+function StudyPage({app,setApp,sessionType,exit}){
+  const[stage,setStage]=useState('mode');
+  const[mode,setMode]=useState(app.stats.prefMode||'choice');
+  const[micGranted,setMicGranted]=useState(null); // null=unknown true=ok false=denied
+  const[dir,setDir]=useState('en-ru');
+  const[queue,setQueue]=useState([]);
+  const[idx,setIdx]=useState(0);
+  const[answered,setAnswered]=useState(false);
+  const[ans,setAns]=useState('');
+  const[ok,setOk]=useState(null);
+  const[hint,setHint]=useState(false);
+  const[score,setScore]=useState({c:0,w:0});
+  const[recog,setRecog]=useState(false);
+  const[recMsg,setRecMsg]=useState('');
+  const inputRef=useRef(null);
+
+  const cur=queue[idx];
+  const pDir=cur?(dir==='mixed'?(cur.id.charCodeAt(0)+idx)%2===0?'en-ru':'ru-en':dir):'en-ru';
+  const prompt=cur?(pDir==='en-ru'?cur.en:cur.ru):'';
+  const expected=cur?(pDir==='en-ru'?cur.ru:cur.en):'';
+  const aLang=pDir==='en-ru'?'ru-RU':'en-US';
+
+  const choices=useMemo(()=>{
+    if(!cur||mode!=='choice')return[];
+    const others=app.words.filter(w=>w.id!==cur.id).map(w=>pDir==='en-ru'?w.ru:w.en);
+    return shuffle([expected,...shuffle(others).slice(0,3)]);
+  },[cur?.id,mode,pDir,expected,app.words]);
+
+  useEffect(()=>{
+    if(cur&&pDir==='en-ru')speak(cur.en);
+    if(mode==='written')setTimeout(()=>{if(inputRef.current)inputRef.current.focus();},200);
+  },[cur?.id]);
+
+  function handleAns(a){
+    if(!cur||answered)return;
+    const correct=isCorrect(a,expected);
+    setOk(correct);setAnswered(true);setAns(a);
+    beep(correct);
+    setTimeout(()=>speak(cur.en),300);
+    setScore(s=>({c:s.c+(correct?1:0),w:s.w+(correct?0:1)}));
+    const today=todayStr();
+    const nw=app.words.map(w=>{
+      if(w.id!==cur.id)return w;
+      return{...w,correct:w.correct+(correct?1:0),wrong:w.wrong+(correct?0:1),streak:correct?w.streak+1:0,learned:correct?(sessionType==='learn'||w.learned):w.learned,learnedDate:correct&&sessionType==='learn'&&!w.learned?today:w.learnedDate,lastReviewed:correct?today:w.lastReviewed};
+    });
+    const ds={...(app.stats.daily?.[today]||{date:today,learned:0,reviewed:0,correct:0,wrong:0})};
+    if(correct)ds.correct++;else ds.wrong++;
+    if(sessionType==='learn'&&correct&&!cur.learned)ds.learned++;
+    if(sessionType!=='learn')ds.reviewed++;
+    const stats={...app.stats,daily:{...app.stats.daily,[today]:ds}};
+    setApp({...app,words:nw,stats});
+    saveData({...app,words:nw,stats});
+  }
+
+  function next(){
+    if(idx+1>=queue.length)setStage('done');
+    else{setIdx(idx+1);setAnswered(false);setAns('');setOk(null);setHint(false);}
+  }
+
+  function startRecog(){
+    setRecog(true);setRecMsg('');
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){setRecog(false);setRecMsg('browser');return;}
+    function doStart(keepStream){
+      try{
+        const r=new SR();
+        r.lang=aLang;
+        r.maxAlternatives=5;
+        r.continuous=false;
+        r.interimResults=true;
+        let gotResult=false;
+        r.onresult=e=>{
+          // Only process final results
+          const last=e.results[e.results.length-1];
+          if(!last.isFinal)return;
+          gotResult=true;
+          let best='';
+          for(let j=0;j<last.length;j++){
+            const t=last[j].transcript.trim();
+            if(t){best=t;break;}
+          }
+          if(keepStream)keepStream.getTracks().forEach(t=>t.stop());
+          if(best){handleAns(best);setRecog(false);setRecMsg('');}
+          else{setRecMsg('no-speech');setRecog(false);}
+        };
+        r.onerror=e=>{
+          if(keepStream)keepStream.getTracks().forEach(t=>t.stop());
+          if(e.error==='no-speech'){setRecMsg('no-speech');}
+          else if(e.error==='not-allowed'||e.error==='permission-denied'){setRecMsg('not-allowed');}
+          else if(e.error==='network'){setRecMsg('network');}
+          else{setRecMsg('other');}
+          setRecog(false);
+        };
+        r.onend=()=>{if(!gotResult){if(keepStream)keepStream.getTracks().forEach(t=>t.stop());setRecog(false);}};
+        r.start();
+      }catch(err){
+        if(keepStream)keepStream.getTracks().forEach(t=>t.stop());
+        setRecMsg('start-error');setRecog(false);
+      }
+    }
+    // On mobile Chrome we MUST get a live MediaStream before starting SR
+    // and keep it alive during recognition (stop it after result/error)
+    if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+      navigator.mediaDevices.getUserMedia({audio:true,video:false})
+        .then(stream=>doStart(stream))
+        .catch(err=>{
+          if(err.name==='NotAllowedError'||err.name==='SecurityError'||err.name==='PermissionDeniedError'){
+            setRecMsg('not-allowed');setRecog(false);
+          }else{
+            // Some browsers allow SR without getUserMedia – try anyway
+            doStart(null);
+          }
+        });
+    }else{doStart(null);}
+  }
+
+  function getPool(){
+    if(sessionType==='learn')return app.words.filter(w=>!w.learned);
+    if(sessionType==='review')return app.words.filter(w=>w.learned&&getNextReviewTime(w)===0);
+    return app.words.filter(w=>w.learned);
+  }
+
+  if(stage==='mode'){
+    return<div className="fade-in">
+      <button className="back-btn" onClick={exit}>&#8592; Назад</button>
+      <h2 className="section-title" style={{textAlign:'center',marginTop:16}}>Study Method</h2>
+      <p className="sub-text" style={{textAlign:'center'}}>Выберите способ</p>
+      <div style={{marginTop:20,display:'flex',flexDirection:'column',gap:12}}>
+        {[{v:'choice',l:'🎯 Multiple Choice',s:'Выбор из вариантов'},{v:'written',l:'✍️ Written',s:'Ввод с клавиатуры'},{v:'voice',l:'🎤 Voice',s:'Голосом'}].map(m=>(
+          <button key={m.v} className="card btn" style={{textAlign:'left',padding:20}}
+            onClick={()=>{
+              if(m.v==='voice'&&micGranted===false){return;}
+              if(m.v==='voice'&&micGranted===null){
+                navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({audio:true,video:false})
+                  .then(s=>{s.getTracks().forEach(t=>t.stop());setMicGranted(true);setMode('voice');setStage('dir');})
+                  .catch(()=>{setMicGranted(false);});
+                return;
+              }
+              setMode(m.v);setStage('dir');
+            }}>
+            <div style={{fontFamily:"'Playfair Display',serif",fontStyle:'italic',fontSize:18}}>{m.l}</div>
+            <div style={{fontSize:12,color:'#999',marginTop:4,textTransform:'uppercase',letterSpacing:'.05em'}}>{m.s}</div>
+          </button>
+        ))}
+      </div>
+      {micGranted===false&&(
+        <div className="recog-error" style={{marginTop:12}}>
+          <div className="msg">Нет доступа к микрофону 🎙️</div>
+          <div className="sub" style={{lineHeight:1.6}}>
+            В Chrome: нажми на 🔒 слева от адреса → <b>Микрофон</b> → <b>Разрешить</b> → перезагрузи страницу
+          </div>
+          <button className="btn btn-ghost" style={{marginTop:8,color:'#D4A5A5',fontWeight:600}}
+            onClick={()=>{navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({audio:true})
+              .then(s=>{s.getTracks().forEach(t=>t.stop());setMicGranted(true);})
+              .catch(()=>setMicGranted(false));}}>🔄 Попробовать снова</button>
+        </div>
+      )}
+    </div>;
+  }
+
+  if(stage==='dir'){
+    return<div className="fade-in">
+      <button className="back-btn" onClick={()=>setStage('mode')}>&#8592; Назад</button>
+      <h2 className="section-title" style={{textAlign:'center',marginTop:16}}>Language Flow</h2>
+      <div style={{marginTop:20,display:'flex',flexDirection:'column',gap:12}}>
+        {[{v:'en-ru',l:'English → Russian'},{v:'ru-en',l:'Russian → English'},{v:'mixed',l:'Mixed Mode',s:'Вперемешку'}].map(d=>(
+          <button key={d.v} className="card btn" style={{textAlign:'left',padding:20}}
+            onClick={()=>{setDir(d.v);
+              const pool=getPool();
+              // Sort: words with errors (wrong>correct) first, then shuffle within each group
+              const withErrors=shuffle(pool.filter(w=>w.wrong>w.correct));
+              const rest=shuffle(pool.filter(w=>w.wrong<=w.correct));
+              const sorted=[...withErrors,...rest];
+              setQueue(sorted.slice(0,15));setIdx(0);setAnswered(false);setAns('');setOk(null);setHint(false);setScore({c:0,w:0});setStage('session');}}>
+            <div style={{fontFamily:"'Playfair Display',serif",fontStyle:'italic',fontSize:18}}>{d.l}</div>
+            <div style={{fontSize:12,color:'#999',marginTop:4}}>{d.s||''}</div>
+          </button>
+        ))}
+      </div>
+    </div>;
+  }
+
+  if(stage==='done'){
+    return<div className="fade-in" style={{textAlign:'center',paddingTop:40}}>
+      <div style={{fontSize:64}}>🕊️</div>
+      <h2 className="section-title">Well Done!</h2>
+      <p className="sub-text">Сессия завершена</p>
+      <div className="card" style={{marginTop:20,display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <div><div className="stat-num" style={{color:'#94A187'}}>{score.c}</div><div className="stat-label">верно</div></div>
+        <div><div className="stat-num" style={{color:'#D4A5A5'}}>{score.w}</div><div className="stat-label">ошибки</div></div>
+      </div>
+      <button className="btn btn-primary" style={{width:'100%',marginTop:20,padding:16}} onClick={exit}>Завершить</button>
+    </div>;
+  }
+
+  if(!cur)return<div style={{textAlign:'center',paddingTop:40}}><p>Нет слов</p><button className="btn btn-primary" onClick={exit}>Назад</button></div>;
+
+  return<div className="fade-in">
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+      <button className="back-btn" onClick={exit}>&#10005;</button>
+      <span className="badge">{idx+1} / {queue.length}</span>
+      <span style={{fontSize:12,color:'#94A187',fontWeight:600}}>{score.c} ✓</span>
+    </div>
+    <div className="progress-bar"><div className="progress-fill" style={{width:`${(idx/queue.length)*100}%`}}/></div>
+    <div className="card" style={{marginTop:20}}>
+      <div className="study-card">
+        <div className="sub-text" style={{marginBottom:8}}>{pDir==='en-ru'?'English':'Russian'}</div>
+        <div className="study-word">{prompt}</div>
+        {!answered&&(
+          <button className="btn btn-ghost" style={{marginTop:12,fontSize:12}} onClick={()=>setHint(!hint)}>
+            {hint?<span className="hint-box">🔑 «{expected[0]}» · {expected.length} символов</span>:'💡 Подсказать?'}
+          </button>
+        )}
+        {answered&&(
+          <div style={{marginTop:20}}>
+            <div style={{fontSize:13,fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:4,color:ok?'#94A187':'#D4A5A5'}}>{ok?'Perfect ✨':'Неверно'}</div>
+            <div style={{fontSize:18,fontWeight:500}}>{expected}</div>
+            <button className="btn btn-ghost" style={{marginTop:8}} onClick={()=>speak(cur.en)}>🔊 Послушать</button>
+          </div>
+        )}
+      </div>
+    </div>
+    <div style={{marginTop:20}}>
+      {mode==='choice'&&!answered&&choices.map(c=>(
+        <button key={c} className="choice-btn btn" style={{marginBottom:8}} onClick={()=>handleAns(c)}>{c}</button>
+      ))}
+      {mode==='written'&&!answered&&(
+        <form onSubmit={e=>{e.preventDefault();if(ans.trim())handleAns(ans);}} style={{display:'flex',flexDirection:'column',gap:12}}>
+          <input ref={inputRef} className="input" style={{textAlign:'center',fontSize:18}} value={ans} onChange={e=>setAns(e.target.value)} placeholder="Ваш ответ..."/>
+          <button type="submit" className="btn btn-primary" style={{width:'100%',padding:16}} disabled={!ans.trim()}>Check</button>
+        </form>
+      )}
+      {mode==='voice'&&!answered&&(
+        <div style={{textAlign:'center'}}>
+          <button className={`voice-btn btn ${recog?'listening':'idle'}`} onClick={startRecog}>🎤</button>
+          {recog&&<p className="sub-text" style={{marginTop:12}}>🎤 Слушаю... говорите ответ</p>}
+          {!recog&&recMsg==='browser'&&(
+            <div className="recog-error">
+              <div className="msg">Голосовой ввод не работает в этом браузере</div>
+              <div className="sub">Откройте сайт в Google Chrome для голосового ввода</div>
+            </div>
+          )}
+          {!recog&&recMsg==='no-speech'&&(
+            <div className="recog-error">
+              <div className="msg">Не услышала речь</div>
+              <div className="sub">Попробуйте ещё раз, говорите громче</div>
+              <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
+            </div>
+          )}
+          {!recog&&recMsg==='not-allowed'&&(
+            <div className="recog-error">
+              <div className="msg">Нет доступа к микрофону 🎙️</div>
+              <div className="sub" style={{lineHeight:1.5}}>
+                1. Нажми на 🔒 или ⚠️ слева от адресной строки Chrome<br/>
+                2. Найди «Микрофон» → выбери «Разрешить»<br/>
+                3. Перезагрузи страницу и попробуй снова
+              </div>
+              <button className="btn btn-ghost" style={{marginTop:10,fontSize:13,color:'#D4A5A5',fontWeight:600}}
+                onClick={()=>{
+                  navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({audio:true})
+                    .then(s=>{s.getTracks().forEach(t=>t.stop());setRecMsg('');})
+                    .catch(()=>setRecMsg('not-allowed'));
+                }}>🔄 Запросить разрешение снова</button>
+            </div>
+          )}
+          {!recog&&recMsg==='network'&&(
+            <div className="recog-error">
+              <div className="msg">Ошибка сети</div>
+              <div className="sub">Проверьте подключение к интернету и попробуйте снова</div>
+              <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
+            </div>
+          )}
+          {!recog&&recMsg==='other'&&(
+            <div className="recog-error">
+              <div className="msg">Не удалось распознать</div>
+              <div className="sub">Попробуйте ещё раз или переключитесь на текстовый режим</div>
+              <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
+            </div>
+          )}
+          {!recog&&recMsg==='start-error'&&(
+            <div className="recog-error">
+              <div className="msg">Не удалось запустить голосовой ввод</div>
+              <div className="sub">Попробуйте использовать Google Chrome</div>
+            </div>
+          )}
+          {!recog&&!recMsg&&<p className="sub-text" style={{marginTop:12}}>Нажмите и скажите ответ</p>}
+        </div>
+      )}
+      {answered&&<button className="btn btn-secondary" style={{width:'100%',padding:16,marginTop:8}} onClick={next}>{idx+1>=queue.length?'Завершить':'Дальше →'}</button>}
+    </div>
+  </div>;
+}
+
+function WordsPage({app,setApp,back}){
+  const[search,setSearch]=useState('');
+  const[fPos,setFPos]=useState('all');
+  const[fTopic,setFTopic]=useState('all');
+  const[editId,setEditId]=useState(null);
+  const[edit,setEdit]=useState({});
+  const[toast,setToast]=useState('');
+  const filtered=app.words.filter(w=>{
+    if(fPos!=='all'&&w.partOfSpeech!==fPos)return false;
+    if(fTopic!=='all'&&w.topic!==fTopic)return false;
+    if(search&&!w.en.toLowerCase().includes(search.toLowerCase())&&!w.ru.toLowerCase().includes(search.toLowerCase()))return false;
+    return true;
+  });
+  function toggleLearn(w){const nw=app.words.map(x=>x.id===w.id?{...x,learned:!x.learned,learnedDate:!x.learned?todayStr():null,streak:!x.learned?1:0}:x);setApp({...app,words:nw});saveData({...app,words:nw});}
+  function del(id){if(!confirm('Удалить?'))return;const nw=app.words.filter(w=>w.id!==id);setApp({...app,words:nw});saveData({...app,words:nw});}
+  function startEdit(w){setEditId(w.id);setEdit({en:w.en,ru:w.ru,partOfSpeech:w.partOfSpeech,topic:w.topic,note:w.note||''});}
+  function saveEdit(){const nw=app.words.map(w=>w.id===editId?{...w,...edit}:w);setApp({...app,words:nw});saveData({...app,words:nw});setEditId(null);setToast('Сохранено');setTimeout(()=>setToast(''),2000);}
+  const grouped={};
+  filtered.forEach(w=>{if(!grouped[w.partOfSpeech])grouped[w.partOfSpeech]=[];grouped[w.partOfSpeech].push(w);});
+  return<div className="fade-in">
+    <Toast msg={toast}/>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+      <button className="back-btn" onClick={back}>&#8592; Назад</button>
+      <h2 className="section-title" style={{margin:0}}>Словарь ({app.words.length})</h2><span/>
+    </div>
+    <input className="input" placeholder="🔍 Поиск..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
+    <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
+      <select className="select" value={fPos} onChange={e=>setFPos(e.target.value)}>
+        <option value="all">Все части речи</option>
+        {Object.entries(POS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+      </select>
+      <select className="select" value={fTopic} onChange={e=>setFTopic(e.target.value)}>
+        <option value="all">Все темы</option>
+        {Object.entries(TOPICS).map(([k,v])=><option key={k} value={k}>{TE[k]||''} {v}</option>)}
+      </select>
+    </div>
+    {Object.entries(grouped).map(([pos,words])=>(
+      <div key={pos} style={{marginBottom:20}}>
+        <h3 style={{fontSize:14,fontWeight:600,color:'#D4A5A5',marginBottom:8}}>{POS[pos]} ({words.length})</h3>
+        {words.map(w=>(
+          <div key={w.id} className="card" style={{padding:12,marginBottom:8}}>
+            {editId===w.id?(
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                <input className="input" value={edit.en||''} onChange={e=>setEdit({...edit,en:e.target.value})} placeholder="English"/>
+                <input className="input" value={edit.ru||''} onChange={e=>setEdit({...edit,ru:e.target.value})} placeholder="Перевод"/>
+                <div style={{display:'flex',gap:8}}>
+                  <select className="select" style={{flex:1}} value={edit.partOfSpeech||''} onChange={e=>setEdit({...edit,partOfSpeech:e.target.value})}>
+                    {Object.entries(POS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+                  </select>
+                  <select className="select" style={{flex:1}} value={edit.topic||''} onChange={e=>setEdit({...edit,topic:e.target.value})}>
+                    {Object.entries(TOPICS).map(([k,v])=><option key={k} value={k}>{TE[k]||''} {v}</option>)}
+                  </select>
+                </div>
+                <input className="input" value={edit.note||''} onChange={e=>setEdit({...edit,note:e.target.value})} placeholder="Заметка"/>
+                <div style={{display:'flex',gap:8}}>
+                  <button className="btn btn-primary btn-sm" style={{flex:1}} onClick={saveEdit}>OK</button>
+                  <button className="btn btn-outline btn-sm" style={{flex:1}} onClick={()=>setEditId(null)}>Отмена</button>
+                </div>
+              </div>
+            ):(
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <div style={{flex:1}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{fontWeight:600}}>{w.en}</span>
+                    <button className="speak-btn" onClick={()=>speak(w.en)}>🔊</button>
+                    {w.learned&&<span style={{color:'#94A187',fontSize:12}}>✓</span>}
+                  </div>
+                  <div style={{fontSize:13,color:'#888'}}>{w.ru}</div>
+                  <div style={{fontSize:11,color:'#bbb'}}>{TE[w.topic]||''} {TOPICS[w.topic]}</div>
+                </div>
+                <div style={{display:'flex',gap:4}}>
+                  <button className="btn btn-sm" style={{padding:'4px 8px',fontSize:12}} onClick={()=>toggleLearn(w)}>{w.learned?'↩️':'✅'}</button>
+                  <button className="btn btn-sm" style={{padding:'4px 8px',fontSize:12}} onClick={()=>startEdit(w)}>✏️</button>
+                  <button className="btn btn-sm" style={{padding:'4px 8px',fontSize:12,color:'#D4A5A5'}} onClick={()=>del(w.id)}>🗑</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    ))}
+  </div>;
+}
+
+function AddPage({app,setApp,back}){
+  const[tab,setTab]=useState('photo');
+  const[en,setEn]=useState('');const[ru,setRu]=useState('');
+  const[pos,setPos]=useState('noun');const[topic,setTopic]=useState('general');
+  const[note,setNote]=useState('');const[msg,setMsg]=useState('');
+  const[bulk,setBulk]=useState('');const[bPos,setBPos]=useState('noun');const[bTopic,setBTopic]=useState('general');
+  const[img,setImg]=useState(null);
+  const[ocrText,setOcrText]=useState('');
+  const[parsing,setParsing]=useState(false);
+  const[prog,setProg]=useState(0);
+  const[parsed,setParsed]=useState([]);
+  const[review,setReview]=useState(false);
+  const[pPos,setPPos]=useState('noun');const[pTopic,setPTopic]=useState('general');
+  const fileRef=useRef(null);
+  function handleFile(f){if(!f)return;const r=new FileReader();r.onload=()=>setImg(r.result);r.readAsDataURL(f);}
+  async function doOCR(){
+    if(!img)return;
+    setParsing(true);setProg(0);setParsed([]);setReview(false);
+    try{
+      const{createWorker}=Tesseract;
+      const worker=await createWorker('eng+rus',1,{logger:m=>{if(m.status==='recognizing text')setProg(Math.round(m.progress*100));}});
+      const{data:d}=await worker.recognize(img);
+      setOcrText(d.text);
+      await worker.terminate();
+      const lines=d.text.split('\n').map(l=>{const t=l.trim();if(!t)return null;const m=t.match(/^(.+?)\s*[\u2014\u2013\-]\s*(.+)$/);return m?{en:m[1].trim(),ru:m[2].trim()}:{en:t,ru:''};}).filter(Boolean);
+      setParsed(lines);setReview(true);
+    }catch(e){setMsg('❌ Ошибка: '+e.message);}
+    setParsing(false);
+  }
+  function addPhoto(){
+    const valid=parsed.filter(w=>w.en.trim());
+    if(!valid.length){setMsg('Нет слов');return;}
+    const nw=valid.map(w=>({id:uid(),en:w.en.trim(),ru:w.ru.trim()||'—',partOfSpeech:pPos,topic:pTopic,note:'',learned:false,learnedDate:null,lastReviewed:null,correct:0,wrong:0,streak:0,created:new Date().toISOString()}));
+    const words=[...app.words,...nw];setApp({...app,words});saveData({...app,words});
+    setImg(null);setOcrText('');setParsed([]);setReview(false);
+    setMsg('✅ Добавлено '+nw.length+' слов!');setTimeout(()=>setMsg(''),3000);
+  }
+  function updateParsed(i,field,v){setParsed(p=>p.map((w,j)=>j===i?{...w,[field]:v}:w));}
+  function removeParsed(i){setParsed(p=>p.filter((_,j)=>j!==i));}
+  function addOne(){
+    if(!en.trim()||!ru.trim())return;
+    const w={id:uid(),en:en.trim(),ru:ru.trim(),partOfSpeech:pos,topic,note:note.trim(),learned:false,learnedDate:null,lastReviewed:null,correct:0,wrong:0,streak:0,created:new Date().toISOString()};
+    const words=[...app.words,w];setApp({...app,words});saveData({...app,words});
+    setEn('');setRu('');setNote('');
+    setMsg('✅ '+w.en+' — '+w.ru);setTimeout(()=>setMsg(''),2000);
+  }
+  function addBulk(){
+    const lines=bulk.split('\n').map(l=>l.trim()).filter(Boolean);
+    const nw=[];
+    for(const l of lines){const m=l.match(/^(.+?)\s*[\u2014\u2013\-:]\s*(.+)$/);if(!m)continue;if(!m[1].trim())continue;nw.push({id:uid(),en:m[1].trim(),ru:m[2].trim()||'—',partOfSpeech:bPos,topic:bTopic,note:'',learned:false,learnedDate:null,lastReviewed:null,correct:0,wrong:0,streak:0,created:new Date().toISOString()});}
+    if(!nw.length){setMsg('Не удалось распознать');return;}
+    const words=[...app.words,...nw];setApp({...app,words});saveData({...app,words});
+    setBulk('');setMsg('✅ '+nw.length+' слов');setTimeout(()=>setMsg(''),2000);
+  }
+  return<div className="fade-in">
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+      <button className="back-btn" onClick={back}>&#8592; Назад</button>
+      <h2 className="section-title" style={{margin:0}}>Добавить</h2><span/>
+    </div>
+    {msg&&<div className="card" style={{textAlign:'center',marginBottom:12,padding:12,fontSize:14}}>{msg}</div>}
+    <div className="tabs" style={{marginBottom:16}}>
+      <button className={`tab ${tab==='photo'?'active':''}`} onClick={()=>setTab('photo')}>📸 Фото</button>
+      <button className={`tab ${tab==='text'?'active':''}`} onClick={()=>setTab('text')}>✍️ Текст</button>
+    </div>
+    {tab==='photo'&&!review&&(
+      <div className="card" style={{textAlign:'center'}}>
+        <h3 className="section-title" style={{fontSize:18}}>Сфотографируйте страницу</h3>
+        <p style={{fontSize:12,color:'#999',margin:'8px 0 20px'}}>Сделайте чёткое фото при хорошем освещении</p>
+        {!img?(
+          <button className="btn" style={{width:'100%',padding:40,border:'2px dashed rgba(212,165,165,0.3)',borderRadius:'2rem',display:'flex',flexDirection:'column',alignItems:'center',gap:8}} onClick={()=>fileRef.current?.click()}>
+            <span style={{fontSize:36}}>📷</span>
+            <span style={{fontSize:14,color:'#D4A5A5',fontWeight:500}}>Выбрать фото</span>
+          </button>
+        ):(
+          <div>
+            <img src={img} style={{width:'100%',maxHeight:200,objectFit:'cover',borderRadius:16,marginBottom:12}}/>
+            <div style={{display:'flex',gap:8}}>
+              <button className="btn btn-outline btn-sm" style={{flex:1}} onClick={()=>setImg(null)}>Другое фото</button>
+              <button className="btn btn-primary btn-sm" style={{flex:1}} onClick={doOCR} disabled={parsing}>{parsing?'⏳ '+prog+'%':'🔍 Распознать'}</button>
+            </div>
+          </div>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" onChange={e=>handleFile(e.target.files[0])} className="hidden-input"/>
+        {parsing&&<div style={{marginTop:16}}><div className="progress-bar"><div className="progress-fill" style={{width:`${prog}%`}}/></div><p style={{fontSize:12,color:'#999',marginTop:8}}>Распознаю текст...</p></div>}
+      </div>
+    )}
+    {review&&(
+      <div className="fade-in">
+        <div className="card" style={{marginBottom:12}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <h3 className="section-title" style={{fontSize:18,margin:0}}>Распознано {parsed.length} слов</h3>
+            <button className="btn btn-ghost" onClick={()=>setReview(false)}>&#8592; Назад</button>
+          </div>
+          <div style={{display:'flex',gap:8,marginBottom:12}}>
+            <select className="select" style={{flex:1}} value={pPos} onChange={e=>setPPos(e.target.value)}>
+              {Object.entries(POS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+            <select className="select" style={{flex:1}} value={pTopic} onChange={e=>setPTopic(e.target.value)}>
+              {Object.entries(TOPICS).map(([k,v])=><option key={k} value={k}>{TE[k]||''} {v}</option>)}
+            </select>
+          </div>
+          <div style={{maxHeight:300,overflowY:'auto',marginBottom:12}}>
+            {parsed.map((w,i)=>(
+              <div key={i} className="word-row">
+                <input className="en" value={w.en} onChange={e=>updateParsed(i,'en',e.target.value)}/>
+                <span style={{color:'#ddd'}}>—</span>
+                <input className="ru" value={w.ru} onChange={e=>updateParsed(i,'ru',e.target.value)} placeholder="Перевод"/>
+                <button className="del" onClick={()=>removeParsed(i)}>✕</button>
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-primary" style={{width:'100%',padding:16}} onClick={addPhoto}>✅ Добавить все {parsed.length} слов</button>
+        </div>
+        {ocrText&&<details><summary>Исходный текст</summary><pre>{ocrText}</pre></details>}
+      </div>
+    )}
+    {tab==='text'&&(
+      <div>
+        <div className="card" style={{marginBottom:16}}>
+          <h3 className="section-title" style={{textAlign:'center',fontSize:16}}>По одному</h3>
+          <input className="input" value={en} onChange={e=>setEn(e.target.value)} placeholder="English" style={{marginBottom:8}}/>
+          <input className="input" value={ru} onChange={e=>setRu(e.target.value)} placeholder="Перевод" style={{marginBottom:8}}/>
+          <div style={{display:'flex',gap:8,marginBottom:8}}>
+            <select className="select" style={{flex:1}} value={pos} onChange={e=>setPos(e.target.value)}>
+              {Object.entries(POS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+            <select className="select" style={{flex:1}} value={topic} onChange={e=>setTopic(e.target.value)}>
+              {Object.entries(TOPICS).map(([k,v])=><option key={k} value={k}>{TE[k]||''} {v}</option>)}
+            </select>
+          </div>
+          <input className="input" value={note} onChange={e=>setNote(e.target.value)} placeholder="Заметка" style={{marginBottom:12}}/>
+          <button className="btn btn-primary" style={{width:'100%',padding:14}} onClick={addOne}>Добавить</button>
+        </div>
+        <div className="card">
+          <h3 className="section-title" style={{textAlign:'center',fontSize:16}}>Списком</h3>
+          <p style={{fontSize:12,color:'#999',textAlign:'center',marginBottom:12}}>Формат: слово - перевод</p>
+          <textarea className="textarea" value={bulk} onChange={e=>setBulk(e.target.value)} rows={6} placeholder={`kitchen - кухня\nclean - убирать`}/>
+          <div style={{display:'flex',gap:8,marginTop:12}}>
+            <select className="select" style={{flex:1}} value={bPos} onChange={e=>setBPos(e.target.value)}>
+              {Object.entries(POS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+            <select className="select" style={{flex:1}} value={bTopic} onChange={e=>setBTopic(e.target.value)}>
+              {Object.entries(TOPICS).map(([k,v])=><option key={k} value={k}>{TE[k]||''} {v}</option>)}
+            </select>
+          </div>
+          <button className="btn btn-secondary" style={{width:'100%',padding:14,marginTop:12}} onClick={addBulk}>Добавить все</button>
+        </div>
+      </div>
+    )}
+  </div>;
+}
+
+function IrregularPage({app,setApp,back}){
+  const[search,setSearch]=useState('');
+  const[editing,setEditing]=useState(null);
+  const[edit,setEdit]=useState({});
+  const[practice,setPractice]=useState(false);
+  const[pIdx,setPIdx]=useState(0);
+  const[pPast,setPPast]=useState('');
+  const[pPP,setPPP]=useState('');
+  const[pChecked,setPChecked]=useState(false);
+  const[pScore,setPScore]=useState({c:0,w:0});
+  const filtered=app.irregular.filter(v=>{const s=search.toLowerCase();return!s||v.base.toLowerCase().includes(s)||v.past.toLowerCase().includes(s)||v.participle.toLowerCase().includes(s)||v.ru.includes(s);});
+  function saveEdit(){const ni=app.irregular.map(v=>v.id===editing?{...v,...edit}:v);setApp({...app,irregular:ni});saveData({...app,irregular:ni});setEditing(null);}
+  if(practice){
+    const cur=app.irregular[pIdx];
+    function check(){setPChecked(true);const ok=pPast.trim().toLowerCase()===cur.past.toLowerCase()&&pPP.trim().toLowerCase()===cur.participle.toLowerCase();setPScore(s=>({c:s.c+(ok?1:0),w:s.w+(ok?0:1)}));if(ok){const ni=app.irregular.map(v=>v.id===cur.id?{...v,learned:true}:v);setApp({...app,irregular:ni});saveData({...app,irregular:ni});}}
+    function next(){if(pIdx+1>=app.irregular.length){setPractice(false);return;}setPIdx(pIdx+1);setPPast('');setPPP('');setPChecked(false);}
+    return<div className="fade-in">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+        <button className="back-btn" onClick={()=>setPractice(false)}>&#8592; Выйти</button>
+        <span className="badge">{pIdx+1}/{app.irregular.length}</span>
+        <span style={{fontSize:12}}><span style={{color:'#94A187'}}>✓{pScore.c}</span> <span style={{color:'#D4A5A5'}}>✗{pScore.w}</span></span>
+      </div>
+      <div className="card" style={{textAlign:'center'}}>
+        <div style={{fontFamily:"'Playfair Display',serif",fontStyle:'italic',fontSize:32}}>{cur.base}</div>
+        <div style={{color:'#999',fontSize:14}}>{cur.ru}</div>
+        <div style={{marginTop:24,textAlign:'left'}}>
+          <label style={{fontSize:12,color:'#999',textTransform:'uppercase',letterSpacing:'.05em'}}>Past Simple (V2)</label>
+          <input className="input" style={{marginTop:4,fontSize:16}} value={pPast} onChange={e=>setPPast(e.target.value)} disabled={pChecked}/>
+          {pChecked&&pPast.trim().toLowerCase()!==cur.past.toLowerCase()&&<div style={{fontSize:12,color:'#D4A5A5',marginTop:4}}>Ответ: {cur.past}</div>}
+          <label style={{fontSize:12,color:'#999',textTransform:'uppercase',letterSpacing:'.05em',marginTop:12,display:'block'}}>Past Participle (V3)</label>
+          <input className="input" style={{marginTop:4,fontSize:16}} value={pPP} onChange={e=>setPPP(e.target.value)} disabled={pChecked}/>
+          {pChecked&&pPP.trim().toLowerCase()!==cur.participle.toLowerCase()&&<div style={{fontSize:12,color:'#D4A5A5',marginTop:4}}>Ответ: {cur.participle}</div>}
+        </div>
+        {!pChecked?<button className="btn btn-primary" style={{width:'100%',marginTop:20,padding:14}} onClick={check}>Проверить</button>
+        :<button className="btn btn-secondary" style={{width:'100%',marginTop:20,padding:14}} onClick={next}>{pIdx+1>=app.irregular.length?'Завершить':'Дальше →'}</button>}
+      </div>
+    </div>;
+  }
+  return<div className="fade-in">
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+      <button className="back-btn" onClick={back}>&#8592; Назад</button>
+      <h2 className="section-title" style={{margin:0}}>Глаголы ({app.irregular.length})</h2><span/>
+    </div>
+    <div style={{display:'flex',gap:8,marginBottom:16}}>
+      <input className="input" placeholder="Поиск..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1}}/>
+      <button className="btn btn-primary btn-sm" onClick={()=>setPractice(true)}>🎯 Тренировать</button>
+    </div>
+    <div className="card" style={{padding:0,overflow:'hidden'}}>
+      <div style={{overflowX:'auto'}}>
+        <table className="irregular-table">
+          <thead><tr><th>Base</th><th>Past</th><th>Participle</th><th>Перевод</th><th/></tr></thead>
+          <tbody>
+            {filtered.map(v=>(
+              <tr key={v.id}>
+                {editing===v.id?(
+                  <>
+                    <td><input className="input" style={{fontSize:13}} value={edit.base||''} onChange={e=>setEdit({...edit,base:e.target.value})}/></td>
+                    <td><input className="input" style={{fontSize:13}} value={edit.past||''} onChange={e=>setEdit({...edit,past:e.target.value})}/></td>
+                    <td><input className="input" style={{fontSize:13}} value={edit.participle||''} onChange={e=>setEdit({...edit,participle:e.target.value})}/></td>
+                    <td><input className="input" style={{fontSize:13}} value={edit.ru||''} onChange={e=>setEdit({...edit,ru:e.target.value})}/></td>
+                    <td><button className="btn btn-sm" style={{fontSize:12}} onClick={saveEdit}>✓</button></td>
+                  </>
+                ):(
+                  <>
+                    <td style={{fontWeight:600}}>
+                      <span style={{display:'flex',alignItems:'center',gap:4}}>
+                        {v.base}
+                        <button className="speak-btn" onClick={()=>speak(v.base,'en-US')}>🔊</button>
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{display:'flex',alignItems:'center',gap:4}}>
+                        {v.past}
+                        <button className="speak-btn" onClick={()=>speak(v.past,'en-US')}>🔊</button>
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{display:'flex',alignItems:'center',gap:4}}>
+                        {v.participle}
+                        <button className="speak-btn" onClick={()=>speak(v.participle,'en-US')}>🔊</button>
+                      </span>
+                    </td>
+                    <td style={{color:'#888'}}>{v.ru}</td>
+                    <td><button className="btn btn-ghost" style={{fontSize:12}} onClick={()=>{setEditing(v.id);setEdit(v);}}>✏️</button></td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>;
+}
+
+function StatsPage({app,back}){
+  const learned=app.words.filter(w=>w.learned).length;
+  const totalCorrect=Object.values(app.stats.daily||{}).reduce((s,d)=>s+(d.correct||0),0);
+  const totalWrong=Object.values(app.stats.daily||{}).reduce((s,d)=>s+(d.wrong||0),0);
+  const acc=totalCorrect+totalWrong===0?0:Math.round(totalCorrect/(totalCorrect+totalWrong)*100);
+  const last14=useMemo(()=>{const arr=[];const today=new Date();for(let i=13;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const ds=d.toISOString().slice(0,10);const s=app.stats.daily?.[ds]||{learned:0,reviewed:0};arr.push({date:ds.slice(8),learned:s.learned||0,reviewed:s.reviewed||0});}return arr;},[app.stats.daily]);
+  const maxBar=Math.max(1,...last14.map(d=>d.learned+d.reviewed));
+  const byTopic={};app.words.forEach(w=>{if(!byTopic[w.topic])byTopic[w.topic]={t:0,l:0};byTopic[w.topic].t++;if(w.learned)byTopic[w.topic].l++;});
+  const byPos={};app.words.forEach(w=>{if(!byPos[w.partOfSpeech])byPos[w.partOfSpeech]={t:0,l:0};byPos[w.partOfSpeech].t++;if(w.learned)byPos[w.partOfSpeech].l++;});
+  return<div className="fade-in">
+    <button className="back-btn" onClick={back} style={{marginBottom:16}}>&#8592; Назад</button>
+    <h2 className="section-title" style={{marginBottom:16}}>Статистика</h2>
+    <div className="grid-2" style={{marginBottom:16}}>
+      <div className="card stat-box"><div className="stat-num" style={{color:'#D4A5A5'}}>{learned}</div><div className="stat-label">выучено</div></div>
+      <div className="card stat-box"><div className="stat-num" style={{color:'#94A187'}}>{acc}%</div><div className="stat-label">точность</div></div>
+      <div className="card stat-box"><div className="stat-num" style={{color:'#B8B5D0'}}>{app.stats.streak||0} 🔥</div><div className="stat-label">серия</div></div>
+      <div className="card stat-box"><div className="stat-num" style={{color:'#4A443F'}}>{Object.keys(app.stats.daily||{}).length}</div><div className="stat-label">дней</div></div>
+    </div>
+    <div className="card" style={{marginBottom:16}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:4}}><span>Общий прогресс</span><span>{learned}/{app.words.length}</span></div>
+      <div className="progress-bar"><div className="progress-fill" style={{width:app.words.length?`${learned/app.words.length*100}%`:'0%',background:'#B8B5D0'}}/></div>
+    </div>
+    <div className="card" style={{marginBottom:16}}>
+      <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>Активность за 14 дней</h3>
+      <div className="chart-bar">
+        {last14.map(d=>(
+          <div className="chart-col" key={d.date}>
+            <div style={{display:'flex',flexDirection:'column-reverse',width:'100%',height:'100%',borderRadius:4,overflow:'hidden'}}>
+              <div style={{height:`${(d.reviewed/maxBar)*100}%`,background:'#94A187',minHeight:1}}/>
+              <div style={{height:`${(d.learned/maxBar)*100}%`,background:'#D4A5A5',minHeight:1}}/>
+            </div>
+            <div className="chart-label">{d.date}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div className="card" style={{marginBottom:16}}>
+      <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>По темам</h3>
+      {Object.entries(byTopic).map(([t,v])=>(
+        <div key={t} style={{marginBottom:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}><span>{TE[t]||''} {TOPICS[t]}</span><span style={{color:'#999'}}>{v.l}/{v.t}</span></div>
+          <div className="progress-bar"><div className="progress-fill" style={{width:`${v.l/v.t*100}%`,background:'#B8B5D0'}}/></div>
+        </div>
+      ))}
+    </div>
+    <div className="card">
+      <h3 style={{fontSize:14,fontWeight:600,marginBottom:12}}>По частям речи</h3>
+      {Object.entries(byPos).map(([t,v])=>(
+        <div key={t} style={{marginBottom:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}><span>{POS[t]}</span><span style={{color:'#999'}}>{v.l}/{v.t}</span></div>
+          <div className="progress-bar"><div className="progress-fill" style={{width:`${v.l/v.t*100}%`,background:'#D4A5A5'}}/></div>
+        </div>
+      ))}
+    </div>
+  </div>;
+}
+
+function SettingsPage({app,setApp,back}){
+  const[msg,setMsg]=useState('');
+  function exportData(){const json=JSON.stringify(app);const blob=new Blob([json],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='my-english-'+todayStr()+'.json';a.click();URL.revokeObjectURL(url);setMsg('✅ Копия скачана');setTimeout(()=>setMsg(''),2000);}
+  function importData(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);setApp(d);saveData(d);setMsg('✅ Импортировано');setTimeout(()=>setMsg(''),2000);}catch(err){setMsg('❌ Ошибка: '+err.message);}};r.readAsText(f);}
+  function reset(){if(!confirm('Удалить все данные?'))return;localStorage.removeItem('my-eng-v2');location.reload();}
+  return<div className="fade-in">
+    <button className="back-btn" onClick={back} style={{marginBottom:16}}>&#8592; Назад</button>
+    <h2 className="section-title" style={{marginBottom:16}}>Настройки</h2>
+    {msg&&<div className="card" style={{textAlign:'center',marginBottom:12,padding:12,fontSize:14}}>{msg}</div>}
+    <div className="card" style={{marginBottom:16}}>
+      <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>💻 Синхронизация</h3>
+      <p style={{fontSize:12,color:'#999',marginBottom:16}}>Скачайте копию на одном устройстве и загрузите на другом</p>
+      <button className="btn btn-primary" style={{width:'100%',padding:14,marginBottom:8}} onClick={exportData}>⬇️ Скачать копию</button>
+      <label className="btn btn-secondary" style={{width:'100%',padding:14,display:'block',textAlign:'center',cursor:'pointer'}}>⬆️ Загрузить копию<input type="file" accept=".json" onChange={importData} className="hidden-input"/></label>
+    </div>
+    <div className="card" style={{marginBottom:16}}>
+      <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>Данные</h3>
+      <p style={{fontSize:13,color:'#888'}}>Слов: {app.words.length} · Выучено: {app.words.filter(w=>w.learned).length} · Глаголов: {app.irregular.length}</p>
+    </div>
+    <button className="btn" style={{width:'100%',padding:14,color:'#D4A5A5',border:'2px solid rgba(212,165,165,0.3)',borderRadius:'999px'}} onClick={reset}>🗑 Сбросить всё</button>
+  </div>;
+}
+
+function App(){
+  const[app,setAppRaw]=useState(initApp);
+  const[view,setView]=useState('home');
+  const[sessionType,setSessionType]=useState('learn');
+  const[welcome,setWelcome]=useState(false);
+  useEffect(()=>{
+    const today=todayStr();
+    const last=app.stats.lastVisit;
+    if(last!==today){
+      const ds={...(app.stats.daily?.[today]||{date:today,learned:0,reviewed:0,correct:0,wrong:0})};
+      const newStats={...app.stats,lastVisit:today,daily:{...app.stats.daily,[today]:ds}};
+      if(last){const diff=Math.round((new Date(today)-new Date(last))/(864e5));newStats.streak=diff===1?(app.stats.streak||0)+1:1;newStats.best=Math.max(newStats.best||0,newStats.streak);}else{newStats.streak=1;}
+      const na={...app,stats:newStats};
+      setAppRaw(na);saveData(na);
+      if(Object.keys(app.stats.daily||{}).length>0)setWelcome(true);
+    }
+  },[]);
+  const setApp=useCallback((a)=>{setAppRaw(a);saveData(a);},[]);
+  function start(t){setSessionType(t);setView('study');}
+  return<div className="app">
+    {welcome&&(
+      <div className="overlay" onClick={()=>setWelcome(false)}>
+        <div className="card overlay-card" style={{textAlign:'center'}} onClick={e=>e.stopPropagation()}>
+          <div style={{fontSize:48,marginBottom:12}}>✨</div>
+          <h2 className="section-title">Welcome back</h2>
+          <p className="sub-text">Days: <span style={{color:'#D4A5A5',fontWeight:700}}>{app.stats.streak||0}</span></p>
+          <button className="btn btn-primary" style={{width:'100%',marginTop:16,padding:14}} onClick={()=>setWelcome(false)}>Continue →</button>
+        </div>
+      </div>
+    )}
+    {view==='home'&&<HomePage app={app} go={setView} start={start}/>}
+    {view==='study'&&<StudyPage app={app} setApp={setApp} sessionType={sessionType} exit={()=>setView('home')}/>}
+    {view==='words'&&<WordsPage app={app} setApp={setApp} back={()=>setView('home')}/>}
+    {view==='add'&&<AddPage app={app} setApp={setApp} back={()=>setView('home')}/>}
+    {view==='irregular'&&<IrregularPage app={app} setApp={setApp} back={()=>setView('home')}/>}
+    {view==='stats'&&<StatsPage app={app} back={()=>setView('home')}/>}
+    {view==='settings'&&<SettingsPage app={app} setApp={setApp} back={()=>setView('home')}/>}
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
