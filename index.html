@@ -428,6 +428,10 @@ function StudyPage({app,setApp,sessionType,exit}){
     setRecog(true);setRecMsg('');
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!SR){setRecog(false);setRecMsg('browser');return;}
+
+    // Detect Android Chrome
+    const isAndroid=/Android/i.test(navigator.userAgent);
+
     function doStart(keepStream){
       function stopStream(){if(keepStream)keepStream.getTracks().forEach(t=>t.stop());}
       try{
@@ -435,10 +439,12 @@ function StudyPage({app,setApp,sessionType,exit}){
         r.lang=aLang;
         r.maxAlternatives=3;
         r.continuous=false;
-        r.interimResults=true; // get interim so we can grab result before onend fires
+        r.interimResults=true;
         let gotResult=false;
         let bestInterim='';
         let silenceTimer=null;
+        // On Android, give more time between speech chunks
+        const SILENCE_MS=isAndroid?2500:1800;
 
         function commit(text){
           if(gotResult)return;
@@ -450,38 +456,37 @@ function StudyPage({app,setApp,sessionType,exit}){
         }
 
         r.onresult=e=>{
-          const last=e.results[e.results.length-1];
-          // grab best transcript regardless of isFinal
           let txt='';
-          for(let j=0;j<last.length;j++){
-            const t=last[j].transcript.trim();
-            if(t){txt=t;break;}
+          // collect ALL results not just last
+          for(let i=0;i<e.results.length;i++){
+            for(let j=0;j<e.results[i].length;j++){
+              const t=e.results[i][j].transcript.trim();
+              if(t){txt=t;break;}
+            }
+            if(txt)break;
           }
           if(txt)bestInterim=txt;
-          if(last.isFinal){
-            commit(txt||bestInterim);
-            return;
-          }
-          // On Android isFinal often never fires — use silence timer
+          const last=e.results[e.results.length-1];
+          if(last.isFinal){commit(txt||bestInterim);return;}
+          // Reset silence timer on each new interim result
           if(silenceTimer)clearTimeout(silenceTimer);
           silenceTimer=setTimeout(()=>{
-            try{r.stop();}catch(e){}
+            try{r.abort();}catch(e){}
             commit(bestInterim);
-          },1800); // 1.8s of silence → accept what we have
+          },SILENCE_MS);
         };
 
         r.onerror=e=>{
           if(silenceTimer)clearTimeout(silenceTimer);
           stopStream();
           if(e.error==='no-speech'){
-            // try using interim if we caught something
             if(bestInterim){commit(bestInterim);return;}
             setRecMsg('no-speech');
           }
           else if(e.error==='not-allowed'||e.error==='permission-denied'){setRecMsg('not-allowed');}
           else if(e.error==='network'){setRecMsg('network');}
           else{setRecMsg('other');}
-          setRecog(false);
+          if(!gotResult)setRecog(false);
         };
 
         r.onend=()=>{
@@ -499,18 +504,14 @@ function StudyPage({app,setApp,sessionType,exit}){
         setRecMsg('start-error');setRecog(false);
       }
     }
-    // On mobile Chrome we MUST get a live MediaStream before starting SR
-    // and keep it alive during recognition (stop it after result/error)
+
     if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
       navigator.mediaDevices.getUserMedia({audio:true,video:false})
         .then(stream=>doStart(stream))
         .catch(err=>{
           if(err.name==='NotAllowedError'||err.name==='SecurityError'||err.name==='PermissionDeniedError'){
             setRecMsg('not-allowed');setRecog(false);
-          }else{
-            // Some browsers allow SR without getUserMedia – try anyway
-            doStart(null);
-          }
+          }else{doStart(null);}
         });
     }else{doStart(null);}
   }
@@ -643,8 +644,16 @@ function StudyPage({app,setApp,sessionType,exit}){
           )}
           {!recog&&recMsg==='no-speech'&&(
             <div className="recog-error">
-              <div className="msg">Не услышала речь</div>
-              <div className="sub">Попробуйте ещё раз, говорите громче</div>
+              <div className="msg">Не услышала 😕</div>
+              <div className="sub">Говори чётче или напиши вручную</div>
+              <div style={{marginTop:10,display:'flex',gap:8,width:'100%'}}>
+                <input id="nsInput" style={{flex:1,padding:'8px 12px',borderRadius:12,border:'1.5px solid #e0d6cc',fontSize:14,outline:'none'}}
+                  placeholder="Напиши ответ..."
+                  onKeyDown={e=>{if(e.key==='Enter'&&e.target.value.trim()){handleAns(e.target.value.trim());setRecMsg('');}}}
+                />
+                <button className="btn btn-primary" style={{padding:'8px 14px',fontSize:13}}
+                  onClick={()=>{const inp=document.getElementById('nsInput');if(inp&&inp.value.trim()){handleAns(inp.value.trim());setRecMsg('');}}}>OK</button>
+              </div>
               <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
             </div>
           )}
