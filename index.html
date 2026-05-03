@@ -424,39 +424,41 @@ function StudyPage({app,setApp,sessionType,exit}){
     else{setIdx(idx+1);setAnswered(false);setAns('');setOk(null);setHint(false);}
   }
 
-  const srRef=React.useRef(null);
   function startRecog(){
-    // Stop any previous recognition instance first
-    if(srRef.current){try{srRef.current.abort();}catch(e){}srRef.current=null;}
-    setRecog(true);setRecMsg('');
-    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SR){setRecog(false);setRecMsg('browser');return;}
-    try{
-      const r=new SR();
-      srRef.current=r;
-      r.lang=aLang;
-      r.maxAlternatives=1;
-      r.continuous=false;
-      r.interimResults=false;
-      r.onresult=e=>{
-        const t=Array.from(e.results).map(res=>res[0].transcript).join('').trim();
-        if(t){handleAns(t);setRecog(false);setRecMsg('');}
-        else{setRecMsg('no-speech');setRecog(false);}
-      };
-      r.onerror=e=>{
-        if(e.error==='no-speech')setRecMsg('no-speech');
-        else if(e.error==='not-allowed'||e.error==='permission-denied')setRecMsg('not-allowed');
-        else if(e.error==='network')setRecMsg('network');
-        else{
-          // On "other" error just silently reset so user can tap mic again
-          setRecog(false);setRecMsg('');
-          return;
-        }
-        setRecog(false);
-      };
-      r.onend=()=>{srRef.current=null;setRecog(false);};
-      r.start();
-    }catch(err){srRef.current=null;setRecMsg('start-error');setRecog(false);}
+    // Stop any running instance first, then wait for it to fully close
+    if(startRecog._r){
+      try{startRecog._r.abort();}catch(e){}
+      startRecog._r=null;
+    }
+    // Small pause so browser releases mic before we re-open it
+    setTimeout(()=>{
+      setRecog(true);setRecMsg('');
+      const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(!SR){setRecog(false);setRecMsg('browser');return;}
+      try{
+        const r=new SR();
+        startRecog._r=r;
+        r.lang=aLang;
+        r.maxAlternatives=1;
+        r.continuous=false;
+        r.interimResults=false;
+        r.onresult=e=>{
+          startRecog._r=null;
+          const t=Array.from(e.results).map(x=>x[0].transcript).join('').trim();
+          if(t){handleAns(t);setRecog(false);setRecMsg('');}
+          else{setRecMsg('no-speech');setRecog(false);}
+        };
+        r.onerror=e=>{
+          startRecog._r=null;
+          if(e.error==='not-allowed'||e.error==='permission-denied')setRecMsg('not-allowed');
+          else if(e.error==='network')setRecMsg('network');
+          else{setRecMsg('');} // any other error — silent reset, user can tap again
+          setRecog(false);
+        };
+        r.onend=()=>{startRecog._r=null;setRecog(false);};
+        r.start();
+      }catch(err){startRecog._r=null;setRecMsg('');setRecog(false);}
+    },200);
   }
 
   function getPool(){
@@ -577,7 +579,7 @@ function StudyPage({app,setApp,sessionType,exit}){
       )}
       {mode==='voice'&&!answered&&(
         <div style={{textAlign:'center'}}>
-          <button className={`voice-btn btn ${recog?'listening':'idle'}`} onClick={()=>{if(srRef.current){try{srRef.current.abort();}catch(e){}}setTimeout(startRecog,300);}}>🎤</button>
+          <button className={`voice-btn btn ${recog?'listening':'idle'}`} onClick={startRecog}>🎤</button>
           {recog&&<p className="sub-text" style={{marginTop:12}}>🎤 Слушаю... говорите ответ</p>}
           {!recog&&recMsg==='browser'&&(
             <div className="recog-error">
@@ -597,7 +599,7 @@ function StudyPage({app,setApp,sessionType,exit}){
                 <button className="btn btn-primary" style={{padding:'8px 14px',fontSize:13}}
                   onClick={()=>{const inp=document.getElementById('nsInput');if(inp&&inp.value.trim()){handleAns(inp.value.trim());setRecMsg('');}}}>OK</button>
               </div>
-              <button className="btn btn-ghost" style={{marginTop:8}} onClick={()=>{if(srRef.current){try{srRef.current.abort();}catch(e){}}setTimeout(startRecog,400);}}>Попробовать снова</button>
+              <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
             </div>
           )}
           {!recog&&recMsg==='not-allowed'&&(
@@ -620,14 +622,14 @@ function StudyPage({app,setApp,sessionType,exit}){
             <div className="recog-error">
               <div className="msg">Ошибка сети</div>
               <div className="sub">Проверьте подключение к интернету и попробуйте снова</div>
-              <button className="btn btn-ghost" style={{marginTop:8}} onClick={()=>{if(srRef.current){try{srRef.current.abort();}catch(e){}}setTimeout(startRecog,400);}}>Попробовать снова</button>
+              <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
             </div>
           )}
           {!recog&&recMsg==='other'&&(
             <div className="recog-error">
               <div className="msg">Не удалось распознать</div>
               <div className="sub">Попробуйте ещё раз или переключитесь на текстовый режим</div>
-              <button className="btn btn-ghost" style={{marginTop:8}} onClick={()=>{if(srRef.current){try{srRef.current.abort();}catch(e){}}setTimeout(startRecog,400);}}>Попробовать снова</button>
+              <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
             </div>
           )}
           {!recog&&recMsg==='start-error'&&(
