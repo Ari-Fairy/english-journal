@@ -396,11 +396,6 @@ function StudyPage({app,setApp,sessionType,exit}){
   useEffect(()=>{
     if(cur&&pDir==='en-ru')speak(cur.en);
     if(mode==='written')setTimeout(()=>{if(inputRef.current)inputRef.current.focus();},200);
-    if(mode==='voice'&&cur&&!answered){
-      // Auto-start mic with delay so page fully renders first
-      // This fixes Android Chrome where manual first-tap doesn't register
-      setTimeout(()=>{startRecog();},600);
-    }
   },[cur?.id]);
 
   function handleAns(a){
@@ -452,7 +447,11 @@ function StudyPage({app,setApp,sessionType,exit}){
         if(e.error==='no-speech')setRecMsg('no-speech');
         else if(e.error==='not-allowed'||e.error==='permission-denied')setRecMsg('not-allowed');
         else if(e.error==='network')setRecMsg('network');
-        else setRecMsg('other');
+        else{
+          // On "other" error just silently reset so user can tap mic again
+          setRecog(false);setRecMsg('');
+          return;
+        }
         setRecog(false);
       };
       r.onend=()=>{srRef.current=null;setRecog(false);};
