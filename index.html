@@ -396,6 +396,11 @@ function StudyPage({app,setApp,sessionType,exit}){
   useEffect(()=>{
     if(cur&&pDir==='en-ru')speak(cur.en);
     if(mode==='written')setTimeout(()=>{if(inputRef.current)inputRef.current.focus();},200);
+    if(mode==='voice'&&cur&&!answered){
+      // Auto-start mic with delay so page fully renders first
+      // This fixes Android Chrome where manual first-tap doesn't register
+      setTimeout(()=>{startRecog();},600);
+    }
   },[cur?.id]);
 
   function handleAns(a){
@@ -424,12 +429,16 @@ function StudyPage({app,setApp,sessionType,exit}){
     else{setIdx(idx+1);setAnswered(false);setAns('');setOk(null);setHint(false);}
   }
 
+  const srRef=React.useRef(null);
   function startRecog(){
+    // Stop any previous recognition instance first
+    if(srRef.current){try{srRef.current.abort();}catch(e){}srRef.current=null;}
     setRecog(true);setRecMsg('');
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!SR){setRecog(false);setRecMsg('browser');return;}
     try{
       const r=new SR();
+      srRef.current=r;
       r.lang=aLang;
       r.maxAlternatives=1;
       r.continuous=false;
@@ -446,9 +455,9 @@ function StudyPage({app,setApp,sessionType,exit}){
         else setRecMsg('other');
         setRecog(false);
       };
-      r.onend=()=>setRecog(false);
+      r.onend=()=>{srRef.current=null;setRecog(false);};
       r.start();
-    }catch(err){setRecMsg('start-error');setRecog(false);}
+    }catch(err){srRef.current=null;setRecMsg('start-error');setRecog(false);}
   }
 
   function getPool(){
