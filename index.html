@@ -577,7 +577,7 @@ function StudyPage({app,setApp,sessionType,exit}){
       )}
       {mode==='voice'&&!answered&&(
         <div style={{textAlign:'center'}}>
-          <button className={`voice-btn btn ${recog?'listening':'idle'}`} onClick={startRecog}>🎤</button>
+          <button className={`voice-btn btn ${recog?'listening':'idle'}`} onClick={()=>{if(srRef.current){try{srRef.current.abort();}catch(e){}}setTimeout(startRecog,300);}}>🎤</button>
           {recog&&<p className="sub-text" style={{marginTop:12}}>🎤 Слушаю... говорите ответ</p>}
           {!recog&&recMsg==='browser'&&(
             <div className="recog-error">
@@ -597,7 +597,7 @@ function StudyPage({app,setApp,sessionType,exit}){
                 <button className="btn btn-primary" style={{padding:'8px 14px',fontSize:13}}
                   onClick={()=>{const inp=document.getElementById('nsInput');if(inp&&inp.value.trim()){handleAns(inp.value.trim());setRecMsg('');}}}>OK</button>
               </div>
-              <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
+              <button className="btn btn-ghost" style={{marginTop:8}} onClick={()=>{if(srRef.current){try{srRef.current.abort();}catch(e){}}setTimeout(startRecog,400);}}>Попробовать снова</button>
             </div>
           )}
           {!recog&&recMsg==='not-allowed'&&(
@@ -620,14 +620,14 @@ function StudyPage({app,setApp,sessionType,exit}){
             <div className="recog-error">
               <div className="msg">Ошибка сети</div>
               <div className="sub">Проверьте подключение к интернету и попробуйте снова</div>
-              <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
+              <button className="btn btn-ghost" style={{marginTop:8}} onClick={()=>{if(srRef.current){try{srRef.current.abort();}catch(e){}}setTimeout(startRecog,400);}}>Попробовать снова</button>
             </div>
           )}
           {!recog&&recMsg==='other'&&(
             <div className="recog-error">
               <div className="msg">Не удалось распознать</div>
               <div className="sub">Попробуйте ещё раз или переключитесь на текстовый режим</div>
-              <button className="btn btn-ghost" style={{marginTop:8}} onClick={startRecog}>Попробовать снова</button>
+              <button className="btn btn-ghost" style={{marginTop:8}} onClick={()=>{if(srRef.current){try{srRef.current.abort();}catch(e){}}setTimeout(startRecog,400);}}>Попробовать снова</button>
             </div>
           )}
           {!recog&&recMsg==='start-error'&&(
