@@ -1259,17 +1259,18 @@ function ReaderPage({app,setApp,back}){
     setPopupPos({x,y:Math.min(y,window.innerHeight-180)});
   }
 
-  async function addWordToDict(word,translation){
-    if(addedWords[word])return;
+  function addWordToDict(word,translation){
+    // Don't close popup here — WordPopup closes itself after showing success
     const existing=app.words.find(w=>w.en.toLowerCase()===word.toLowerCase());
-    if(existing){setToast('Уже в словаре: '+word);setTimeout(()=>setToast(''),2000);setPopupWord(null);return;}
+    if(existing){setToast('Уже в словаре: '+word);setTimeout(()=>setToast(''),2000);return false;}
     const w={id:uid(),en:word,ru:translation||'—',partOfSpeech:'noun',topic:'general',note:'из книги',learned:false,learnedDate:null,lastReviewed:null,correct:0,wrong:0,streak:0,created:new Date().toISOString()};
     const words=[...app.words,w];
     const newStats={...app.stats,wordsFromBooks:(app.stats.wordsFromBooks||0)+1};
     const na={...app,words,stats:newStats};
     const achs=checkAchievements(na);if(achs.length)na.stats={...na.stats,achievements:[...(na.stats.achievements||[]),...achs]};
     setApp(na);setAddedWords(a=>({...a,[word]:true}));
-    setToast('✅ «'+word+'» добавлено!');setTimeout(()=>setToast(''),2200);setPopupWord(null);
+    setToast('✅ «'+word+'» добавлено!');setTimeout(()=>setToast(''),2200);
+    return true;
   }
 
   function finishReading(){
@@ -1396,26 +1397,39 @@ function WordPopup({word,pos,appWords,onAdd,onClose}){
   useEffect(()=>{
     setLoading(true);setTranslation('');setAdded(false);
     if(existing){setTranslation(existing.ru);setLoading(false);return;}
-    fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-calls':'true'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:40,
-        system:'Translate the English word to Russian. Reply ONLY with the translation, nothing else. No punctuation at end.',
-        messages:[{role:'user',content:word.clean}]
-      })
-    })
-    .then(r=>r.json())
-    .then(d=>{const t=d?.content?.[0]?.text?.trim();if(t)setTranslation(t);})
-    .catch(()=>{})
-    .finally(()=>setLoading(false));
+    // Try multiple free translation APIs
+    async function tryTranslate(){
+      // API 1: MyMemory (free, CORS-friendly)
+      try{
+        const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(word.clean)+'&langpair=en|ru');
+        const d=await r.json();
+        const t=d?.responseData?.translatedText;
+        if(t && t.toLowerCase()!==word.clean.toLowerCase() && t.length<100 && !/^[A-Z0-9\s]+$/.test(t)){
+          setTranslation(t);setLoading(false);return;
+        }
+      }catch(e){}
+      // API 2: Lingva Translate (open source, CORS ok)
+      try{
+        const r=await fetch('https://lingva.ml/api/v1/en/ru/'+encodeURIComponent(word.clean));
+        const d=await r.json();
+        const t=d?.translation;
+        if(t && t.toLowerCase()!==word.clean.toLowerCase()){
+          setTranslation(t);setLoading(false);return;
+        }
+      }catch(e){}
+      // Both failed — user types manually
+      setLoading(false);
+    }
+    tryTranslate();
   },[word.clean]);
 
-  async function handleAdd(){
+  function handleAdd(){
     if(adding||added)return;
     setAdding(true);
-    await onAdd(word.clean,translation);
+    const ok=onAdd(word.clean,translation);
     setAdded(true);setAdding(false);
+    // Close popup after brief success flash
+    setTimeout(()=>onClose(),800);
   }
 
   return(
@@ -1424,12 +1438,19 @@ function WordPopup({word,pos,appWords,onAdd,onClose}){
         <div style={{fontFamily:"'Lora',serif",fontStyle:'italic',fontSize:19,fontWeight:600}}>{word.clean}</div>
         <button style={{background:'none',border:'none',cursor:'pointer',color:'#ccc',fontSize:17,padding:'0 0 0 10px'}} onClick={onClose}>✕</button>
       </div>
-      <div style={{minHeight:32,marginBottom:10}}>
+      <div style={{marginBottom:10}}>
         {loading
           ?<div style={{display:'flex',alignItems:'center',gap:6,color:'#bbb',fontSize:13}}>
               <span style={{display:'inline-block',animation:'pulse 1.2s infinite'}}>⏳</span> перевожу...
             </div>
-          :<div style={{fontSize:18,color:'var(--warm)',fontWeight:500}}>{translation||<span style={{color:'#ccc',fontSize:14}}>не нашла перевод</span>}</div>
+          :<input
+              className="input"
+              style={{fontSize:16,padding:'8px 12px',fontWeight:500}}
+              value={translation}
+              onChange={e=>setTranslation(e.target.value)}
+              placeholder="Введи перевод..."
+              autoFocus
+            />
         }
       </div>
       <div style={{display:'flex',gap:6}}>
