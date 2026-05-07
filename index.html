@@ -1263,12 +1263,27 @@ function ReaderPage({app,setApp,back}){
     // Don't close popup here — WordPopup closes itself after showing success
     const existing=app.words.find(w=>w.en.toLowerCase()===word.toLowerCase());
     if(existing){setToast('Уже в словаре: '+word);setTimeout(()=>setToast(''),2000);return false;}
-    const w={id:uid(),en:word,ru:translation||'—',partOfSpeech:'noun',topic:'general',note:'из книги',learned:false,learnedDate:null,lastReviewed:null,correct:0,wrong:0,streak:0,created:new Date().toISOString()};
+    const settings = askWordSettings(word, translation);
+    const w={
+      id:uid(),
+      en:word,
+      ru:translation||'—',
+      partOfSpeech:settings.pos,
+      topic:settings.topic,
+      note:'из книги',
+      learned:false,
+      learnedDate:null,
+      lastReviewed:null,
+      correct:0,
+      wrong:0,
+      streak:0,
+      created:new Date().toISOString()
+    };
     const words=[...app.words,w];
     const newStats={...app.stats,wordsFromBooks:(app.stats.wordsFromBooks||0)+1};
     const na={...app,words,stats:newStats};
     const achs=checkAchievements(na);if(achs.length)na.stats={...na.stats,achievements:[...(na.stats.achievements||[]),...achs]};
-    setApp(na);saveData(na);setAddedWords(a=>({...a,[word]:true}));
+    setApp(na);setAddedWords(a=>({...a,[word]:true}));
     setToast('✅ «'+word+'» добавлено!');setTimeout(()=>setToast(''),2200);
     return true;
   }
@@ -1280,6 +1295,55 @@ function ReaderPage({app,setApp,back}){
     const achs=checkAchievements(na);if(achs.length)na.stats={...na.stats,achievements:[...(na.stats.achievements||[]),...achs]};
     setApp(na);setFinished(true);
   }
+
+  
+  function detectPartOfSpeech(word, translation){
+    const verbs=['open','close','go','come','take','make','do','say','get','see','know','think','look','want','give','use','find','tell','ask','work','seem','feel','try','leave','call','read','write','eat','drink','sleep','run','walk'];
+    const adjectives=['beautiful','happy','sad','big','small','good','bad','important','different'];
+    const lower=word.toLowerCase();
+
+    if(verbs.includes(lower)) return 'verb';
+    if(adjectives.includes(lower)) return 'adjective';
+
+    if(lower.endsWith('ly')) return 'adverb';
+    if(lower.endsWith('ing')||lower.endsWith('ed')) return 'verb';
+
+    return 'noun';
+  }
+
+  function askWordSettings(word, translation){
+    let detectedPos = detectPartOfSpeech(word, translation);
+    let pos = prompt(
+`Часть речи для слова "${word}"
+
+Система определила: ${detectedPos}
+
+Можно изменить вручную:
+noun — существительное
+verb — глагол
+adjective — прилагательное
+adverb — наречие`,
+detectedPos
+    ) || detectedPos;
+
+    let topic = prompt(
+`Тема слова "${word}"
+
+Например:
+general
+travel
+school
+books
+food
+
+Можно написать свою тему.`,
+'general'
+    ) || 'general';
+
+    return {pos: pos.trim().toLowerCase(), topic: topic.trim().toLowerCase()};
+  }
+
+
 
   // Tomorrow's featured level
   const levels=['A1','A2','B1','B2'];
@@ -1399,36 +1463,25 @@ function WordPopup({word,pos,appWords,onAdd,onClose}){
     if(existing){setTranslation(existing.ru);setLoading(false);return;}
     // Try multiple free translation APIs
     async function tryTranslate(){
-      const cleanWord=encodeURIComponent(word.clean.trim());
-
-      // API 1: Google Translate public endpoint
+      // API 1: MyMemory (free, CORS-friendly)
       try{
-        const r=await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${cleanWord}`);
-        const d=await r.json();
-        const t=d?.[0]?.map(x=>x[0]).join('');
-
-        if(t && t.toLowerCase()!==word.clean.toLowerCase()){
-          setTranslation(t);
-          setLoading(false);
-          return;
-        }
-      }catch(e){console.log('Google translate failed',e);}
-
-      // API 2: MyMemory fallback
-      try{
-        const r=await fetch('https://api.mymemory.translated.net/get?q='+cleanWord+'&langpair=en|ru');
+        const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(word.clean)+'&langpair=en|ru');
         const d=await r.json();
         const t=d?.responseData?.translatedText;
-
-        if(t && t.toLowerCase()!==word.clean.toLowerCase() && t.length<100){
-          setTranslation(t);
-          setLoading(false);
-          return;
+        if(t && t.toLowerCase()!==word.clean.toLowerCase() && t.length<100 && !/^[A-Z0-9\s]+$/.test(t)){
+          setTranslation(t);setLoading(false);return;
         }
-      }catch(e){console.log('MyMemory failed',e);}
-
-      // If all APIs failed
-      setTranslation('');
+      }catch(e){}
+      // API 2: Lingva Translate (open source, CORS ok)
+      try{
+        const r=await fetch('https://lingva.ml/api/v1/en/ru/'+encodeURIComponent(word.clean));
+        const d=await r.json();
+        const t=d?.translation;
+        if(t && t.toLowerCase()!==word.clean.toLowerCase()){
+          setTranslation(t);setLoading(false);return;
+        }
+      }catch(e){}
+      // Both failed — user types manually
       setLoading(false);
     }
     tryTranslate();
@@ -1678,4 +1731,4 @@ function App(){
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
-  </html>
+</html>
