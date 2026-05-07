@@ -1268,7 +1268,7 @@ function ReaderPage({app,setApp,back}){
     const newStats={...app.stats,wordsFromBooks:(app.stats.wordsFromBooks||0)+1};
     const na={...app,words,stats:newStats};
     const achs=checkAchievements(na);if(achs.length)na.stats={...na.stats,achievements:[...(na.stats.achievements||[]),...achs]};
-    setApp(na);setAddedWords(a=>({...a,[word]:true}));
+    setApp(na);saveData(na);setAddedWords(a=>({...a,[word]:true}));
     setToast('✅ «'+word+'» добавлено!');setTimeout(()=>setToast(''),2200);
     return true;
   }
@@ -1399,25 +1399,36 @@ function WordPopup({word,pos,appWords,onAdd,onClose}){
     if(existing){setTranslation(existing.ru);setLoading(false);return;}
     // Try multiple free translation APIs
     async function tryTranslate(){
-      // API 1: MyMemory (free, CORS-friendly)
+      const cleanWord=encodeURIComponent(word.clean.trim());
+
+      // API 1: Google Translate public endpoint
       try{
-        const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(word.clean)+'&langpair=en|ru');
+        const r=await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${cleanWord}`);
+        const d=await r.json();
+        const t=d?.[0]?.map(x=>x[0]).join('');
+
+        if(t && t.toLowerCase()!==word.clean.toLowerCase()){
+          setTranslation(t);
+          setLoading(false);
+          return;
+        }
+      }catch(e){console.log('Google translate failed',e);}
+
+      // API 2: MyMemory fallback
+      try{
+        const r=await fetch('https://api.mymemory.translated.net/get?q='+cleanWord+'&langpair=en|ru');
         const d=await r.json();
         const t=d?.responseData?.translatedText;
-        if(t && t.toLowerCase()!==word.clean.toLowerCase() && t.length<100 && !/^[A-Z0-9\s]+$/.test(t)){
-          setTranslation(t);setLoading(false);return;
+
+        if(t && t.toLowerCase()!==word.clean.toLowerCase() && t.length<100){
+          setTranslation(t);
+          setLoading(false);
+          return;
         }
-      }catch(e){}
-      // API 2: Lingva Translate (open source, CORS ok)
-      try{
-        const r=await fetch('https://lingva.ml/api/v1/en/ru/'+encodeURIComponent(word.clean));
-        const d=await r.json();
-        const t=d?.translation;
-        if(t && t.toLowerCase()!==word.clean.toLowerCase()){
-          setTranslation(t);setLoading(false);return;
-        }
-      }catch(e){}
-      // Both failed — user types manually
+      }catch(e){console.log('MyMemory failed',e);}
+
+      // If all APIs failed
+      setTranslation('');
       setLoading(false);
     }
     tryTranslate();
@@ -1667,4 +1678,4 @@ function App(){
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
-</html>
+  </html>
