@@ -349,7 +349,16 @@ let supabase=null;
 
 function initSupabase(){
   if(supabase)return;
-  supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  if(!window.supabase){
+    console.log('Supabase SDK загружается...');
+    setTimeout(initSupabase,500);
+    return;
+  }
+  try{
+    const{createClient}=window.supabase;
+    supabase=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    console.log('✓ Supabase инициализирован');
+  }catch(e){console.error('Supabase init error:',e);}
 }
 
 async function supabaseSaveData(user,appData){
@@ -1823,8 +1832,17 @@ function SettingsPage({app,setApp,back}){
           client_id:'836240276310-urc8bgu3pp9gt6f0tt6ncus5e3akj8va.apps.googleusercontent.com',
           callback:async(response)=>{
             try{
+              // Ensure Supabase is initialized
+              if(!supabase){
+                initSupabase();
+                if(!supabase){
+                  setMsg('⏳ Загружается... подожди');
+                  setTimeout(()=>{window.location.reload();},2000);
+                  return;
+                }
+              }
+              
               // Sign in to Supabase with Google token
-              initSupabase();
               const{data,error}=await supabase.auth.signInWithIdToken({
                 provider:'google',
                 token:response.credential
