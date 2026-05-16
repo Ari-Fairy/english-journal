@@ -9,6 +9,9 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script async src="https://accounts.google.com/gsi/client"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -339,6 +342,46 @@ function checkAchievements(app){
     if(!unlocked.includes(ach.id)&&ach.check(app)){newOnes.push(ach.id);}
   }
   return newOnes;
+}
+
+// ────── FIREBASE CONFIG ──────
+const firebaseConfig={
+  apiKey:'AIzaSyCRthTeAJPiF2XmtDo9HcnpiNHnzLH8wjY',
+  authDomain:'english-journal-ff825.firebaseapp.com',
+  databaseURL:'https://english-journal-ff825-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId:'english-journal-ff825',
+  storageBucket:'english-journal-ff825.firebasestorage.app',
+  messagingSenderId:'836240276310',
+  appId:'1:836240276310:web:dd2b07d947b6151eb9f4f7'
+};
+
+let firebaseInitialized=false;
+let firebaseDb=null;
+let firebaseAuth=null;
+
+function initFirebase(){
+  if(firebaseInitialized)return;
+  try{
+    firebase.initializeApp(firebaseConfig);
+    firebaseDb=firebase.database();
+    firebaseAuth=firebase.auth();
+    firebaseInitialized=true;
+  }catch(e){console.error('Firebase init error:',e);}
+}
+
+async function saveToFirebase(user,data){
+  if(!firebaseInitialized||!firebaseDb||!user)return;
+  try{
+    await firebaseDb.ref(`users/${user.uid}/app`).set(data);
+  }catch(e){console.error('Firebase save error:',e);}
+}
+
+async function loadFromFirebase(user){
+  if(!firebaseInitialized||!firebaseDb||!user)return null;
+  try{
+    const snapshot=await firebaseDb.ref(`users/${user.uid}/app`).get();
+    return snapshot.val();
+  }catch(e){console.error('Firebase load error:',e);return null;}
 }
 
 // ────── HELPERS ──────
@@ -1726,18 +1769,29 @@ function SettingsPage({app,setApp,back}){
       try{
         window.google.accounts.id.initialize({
           client_id:'831001153374-35peepoj6vjfmho550k9pu5locvi964p.apps.googleusercontent.com',
-          callback:(response)=>{
+          callback:async(response)=>{
             try{
-              const base64Url=response.credential.split('.')[1];
-              const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
-              const jsonPayload=decodeURIComponent(atob(base64).split('').map((c)=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-              const decoded=JSON.parse(jsonPayload);
-              const newApp={...app,user:{name:decoded.name,email:decoded.email,picture:decoded.picture}};
+              // Sign in to Firebase with Google token
+              const credential=firebase.auth.GoogleAuthProvider.credential(response.credential);
+              const result=await firebaseAuth.signInWithCredential(credential);
+              const user=result.user;
+              
+              // Save user to app state
+              const newApp={...app,user:{name:user.displayName,email:user.email,picture:user.photoURL,uid:user.uid}};
               setApp(newApp);
-              setMsg('✓ Успешный вход через Google!');
+              
+              // Load from Firebase
+              const remoteData=await loadFromFirebase(user);
+              if(remoteData){
+                setAppRaw(remoteData);
+                saveData(remoteData);
+              }
+              
+              setMsg('✓ Синхронизация активирована!');
               setTimeout(()=>setMsg(''),3000);
             }catch(e){
-              setMsg('✗ Ошибка при обработке данных Google');
+              console.error('Google/Firebase error:',e);
+              setMsg('✗ Ошибка синхронизации');
             }
           },
           auto_select:false
@@ -1775,50 +1829,13 @@ function SettingsPage({app,setApp,back}){
         {!app.user?(
           <div>
             <div id="google_signin_button" style={{display:'flex',justifyContent:'center'}}></div>
-            <p style={{fontSize:11,color:'#999',marginTop:12,textAlign:'center'}}>Войди через Google чтобы включить облачную синхронизацию</p>
+            <p style={{fontSize:11,color:'#999',marginTop:12,textAlign:'center'}}>Войди через Google чтобы синхронизировать данные</p>
           </div>
         ):(
-          <div>
-            <div style={{background:'rgba(148,161,135,.1)',border:'1.5px solid rgba(148,161,135,.25)',borderRadius:'1rem',padding:14,marginBottom:12}}>
-              <div style={{fontSize:13,fontWeight:600,color:'var(--sage)',marginBottom:8}}>✓ Вход выполнен</div>
-              <div style={{fontSize:12,color:'#888'}}>{app.user.email}</div>
-            </div>
-            <div style={{display:'flex',gap:8,marginBottom:12}}>
-              <button className="btn btn-primary" style={{flex:1,padding:'11px 12px',fontSize:12}} onClick={()=>{
-                const blob=new Blob([JSON.stringify(app)],{type:'application/json'});
-                const url=URL.createObjectURL(blob);
-                const a=document.createElement('a');
-                a.href=url;
-                a.download='english-journal-'+todayStr()+'.json';
-                a.click();
-                URL.revokeObjectURL(url);
-                setMsg('✅ Данные скачаны!');
-              }}>💾 Скачать</button>
-              <button className="btn btn-secondary" style={{flex:1,padding:'11px 12px',fontSize:12}} onClick={()=>{
-                const input=document.createElement('input');
-                input.type='file';
-                input.accept='.json';
-                input.onchange=(e)=>{
-                  const f=e.target.files?.[0];
-                  if(!f)return;
-                  const r=new FileReader();
-                  r.onload=()=>{
-                    try{
-                      const d=JSON.parse(r.result);
-                      setApp(d);
-                      saveData(d);
-                      setMsg('✅ Данные загружены с облака!');
-                    }catch(err){
-                      setMsg('❌ Ошибка загрузки файла');
-                    }
-                  };
-                  r.readAsText(f);
-                };
-                input.click();
-              }}>📤 Загрузить</button>
-            </div>
-            <p style={{fontSize:11,color:'#999',textAlign:'center',lineHeight:1.5}}>💡 Скачай данные сюда, загрузи в Google Drive на компьютере, загрузи обратно на телефон</p>
-            <button className="btn" style={{width:'100%',marginTop:8,padding:'10px 12px',fontSize:12,background:'transparent',border:'1.5px solid rgba(148,161,135,.25)',color:'var(--sage)',borderRadius:'999px',cursor:'pointer',fontFamily:'inherit',fontWeight:600}} onClick={()=>setApp({...app,user:null})}>Выйти</button>
+          <div style={{background:'rgba(148,161,135,.1)',border:'1.5px solid rgba(148,161,135,.25)',borderRadius:'1rem',padding:14,marginBottom:12}}>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--sage)',marginBottom:8}}>✓ Вход выполнен</div>
+            <div style={{fontSize:12,color:'#888'}}>{app.user.email}</div>
+            <button className="btn" style={{width:'100%',marginTop:12,padding:'10px 12px',fontSize:12,background:'transparent',border:'1.5px solid rgba(148,161,135,.25)',color:'var(--sage)',borderRadius:'999px',cursor:'pointer',fontFamily:'inherit',fontWeight:600}} onClick={()=>{firebaseAuth.signOut();setApp({...app,user:null});setMsg('✓ Вы вышли');}}>Выйти</button>
           </div>
         )}
       </div>
@@ -1837,40 +1854,35 @@ function SettingsPage({app,setApp,back}){
 }
 
 // ────── APP ROOT ──────
-// ════════════════════════════════════════════════════════════════
-// AUTO SYNC BETWEEN TABS
-// ════════════════════════════════════════════════════════════════
-function setupAutoSync(){
-  // Listen for storage changes from other tabs
-  window.addEventListener('storage',(e)=>{
-    if(e.key==='my-eng-v3'&&e.newValue){
-      try{
-        const newData=JSON.parse(e.newValue);
-        // Notify via custom event
-        window.dispatchEvent(new CustomEvent('dataSync',{detail:newData}));
-      }catch(e){}
-    }
-  });
-}
-
 function App(){
   const[app,setAppRaw]=useState(initApp);
   const[view,setView]=useState('home');
   const[sessionType,setSessionType]=useState('learn');
   const[welcome,setWelcome]=useState(false);
   const[newAch,setNewAch]=useState([]);
+  const[currentUser,setCurrentUser]=useState(null);
 
+  // INITIALIZE FIREBASE AND AUTH
   useEffect(()=>{
-    setupAutoSync();
+    initFirebase();
     
-    // Listen for sync events from other tabs/windows
-    const handleSync=(e)=>{
-      const newData=e.detail;
-      setAppRaw(newData);
-    };
-    
-    window.addEventListener('dataSync',handleSync);
-    return()=>window.removeEventListener('dataSync',handleSync);
+    if(firebaseAuth){
+      const unsubscribe=firebaseAuth.onAuthStateChanged(async(user)=>{
+        if(user){
+          setCurrentUser(user);
+          // LOAD FROM FIREBASE
+          const remoteData=await loadFromFirebase(user);
+          if(remoteData){
+            setAppRaw(remoteData);
+            saveData(remoteData);
+            console.log('✅ Данные загружены из Firebase');
+          }
+        }else{
+          setCurrentUser(null);
+        }
+      });
+      return()=>unsubscribe();
+    }
   },[]);
 
   useEffect(()=>{
@@ -1895,8 +1907,13 @@ function App(){
       setNewAch(achObjs);
       setTimeout(()=>setNewAch([]),3500);
     }
-    setAppRaw(a);saveData(a);
-  },[app.stats.achievements]);
+    setAppRaw(a);
+    saveData(a);
+    // SAVE TO FIREBASE if user is logged in
+    if(currentUser){
+      saveToFirebase(currentUser,a);
+    }
+  },[app.stats.achievements,currentUser]);
 
   function start(t){setSessionType(t);setView('study');}
 
