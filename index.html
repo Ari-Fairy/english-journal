@@ -361,11 +361,19 @@ let firebaseAuth=null;
 
 function initFirebase(){
   if(firebaseInitialized)return;
+  if(!window.firebase){
+    console.log('Firebase SDK загружается...');
+    setTimeout(initFirebase,500);
+    return;
+  }
   try{
-    firebase.initializeApp(firebaseConfig);
+    if(!firebase.apps.length){
+      firebase.initializeApp(firebaseConfig);
+    }
     firebaseDb=firebase.database();
     firebaseAuth=firebase.auth();
     firebaseInitialized=true;
+    console.log('✓ Firebase инициализирован');
   }catch(e){console.error('Firebase init error:',e);}
 }
 
@@ -1771,6 +1779,16 @@ function SettingsPage({app,setApp,back}){
           client_id:'836240276310-urc8bgu3pp9gt6f0tt6ncus5e3akj8va.apps.googleusercontent.com',
           callback:async(response)=>{
             try{
+              // Ensure Firebase is initialized
+              if(!firebaseInitialized){
+                initFirebase();
+                if(!firebaseInitialized){
+                  setMsg('⏳ Firebase загружается... подожди');
+                  setTimeout(()=>{window.location.reload();},2000);
+                  return;
+                }
+              }
+              
               // Decode JWT token
               const base64Url=response.credential.split('.')[1];
               const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
