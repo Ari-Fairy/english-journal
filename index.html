@@ -341,6 +341,73 @@ function checkAchievements(app){
   return newOnes;
 }
 
+// ────── GITHUB AUTO SYNC ──────
+const GH_TOKEN='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';
+const GH_USER='ari-fairy';
+const GH_REPO='english-journal';
+const GH_FILE='progress.json';
+let lastSyncTime=0;
+
+async function autoSaveToGithub(appData){
+  // Throttle saves - max 1 per 5 seconds
+  const now=Date.now();
+  if(now-lastSyncTime<5000)return;
+  lastSyncTime=now;
+  
+  try{
+    const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
+    
+    // Get current file SHA
+    const checkRes=await fetch(url,{
+      headers:{'Authorization':'token '+GH_TOKEN,'Accept':'application/vnd.github.v3+json'}
+    });
+    
+    let sha=undefined;
+    if(checkRes.ok){
+      const data=await checkRes.json();
+      sha=data.sha;
+    }
+    
+    // Save file
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(appData))));
+    const payload={
+      message:'Auto sync '+new Date().toISOString(),
+      content:content
+    };
+    if(sha)payload.sha=sha;
+    
+    const saveRes=await fetch(url,{
+      method:'PUT',
+      headers:{'Authorization':'token '+GH_TOKEN,'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    
+    if(saveRes.ok){
+      console.log('✓ Auto saved to GitHub');
+    }
+  }catch(e){
+    console.error('Auto save error:',e);
+  }
+}
+
+async function autoLoadFromGithub(){
+  try{
+    const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
+    const res=await fetch(url,{
+      headers:{'Authorization':'token '+GH_TOKEN,'Accept':'application/vnd.github.v3+json'}
+    });
+    
+    if(!res.ok)return null;
+    
+    const data=await res.json();
+    const json=JSON.parse(decodeURIComponent(escape(atob(data.content))));
+    return json;
+  }catch(e){
+    console.error('Auto load error:',e);
+    return null;
+  }
+}
+
 // ────── HELPERS ──────
 function loadData(){try{const r=localStorage.getItem('my-eng-v3');if(r)return JSON.parse(r);}catch(e){}return null;}
 function saveData(d){localStorage.setItem('my-eng-v3',JSON.stringify(d));}
@@ -1734,8 +1801,18 @@ function SettingsPage({app,setApp,back}){
               const decoded=JSON.parse(jsonPayload);
               const newApp={...app,user:{name:decoded.name,email:decoded.email,picture:decoded.picture}};
               setApp(newApp);
-              setMsg('✓ Успешный вход через Google!');
-              setTimeout(()=>setMsg(''),3000);
+              
+              // Load latest from GitHub after login
+              autoLoadFromGithub().then(remoteData=>{
+                if(remoteData){
+                  setAppRaw(remoteData);
+                  saveData(remoteData);
+                  setMsg('✓ Вход выполнен! Данные загружены из GitHub');
+                }else{
+                  setMsg('✓ Успешный вход через Google!');
+                }
+                setTimeout(()=>setMsg(''),3000);
+              });
             }catch(e){
               setMsg('✗ Ошибка при обработке данных Google');
             }
@@ -1806,6 +1883,21 @@ function App(){
   const[sessionType,setSessionType]=useState('learn');
   const[welcome,setWelcome]=useState(false);
   const[newAch,setNewAch]=useState([]);
+  const[loading,setLoading]=useState(true);
+
+  // LOAD FROM GITHUB ON START
+  useEffect(()=>{
+    async function loadInitial(){
+      const remoteData=await autoLoadFromGithub();
+      if(remoteData){
+        setAppRaw(remoteData);
+        saveData(remoteData);
+        console.log('✅ Загружено из GitHub');
+      }
+      setLoading(false);
+    }
+    loadInitial();
+  },[]);
 
   useEffect(()=>{
     const today=todayStr();
@@ -1820,7 +1912,6 @@ function App(){
   },[]);
 
   const setApp=useCallback((a)=>{
-    // Check for new achievements on every app update
     const prevAchs=app.stats.achievements||[];
     const currAchs=a.stats?.achievements||[];
     const fresh=currAchs.filter(id=>!prevAchs.includes(id));
@@ -1829,7 +1920,10 @@ function App(){
       setNewAch(achObjs);
       setTimeout(()=>setNewAch([]),3500);
     }
-    setAppRaw(a);saveData(a);
+    setAppRaw(a);
+    saveData(a);
+    // AUTO SAVE TO GITHUB
+    autoSaveToGithub(a);
   },[app.stats.achievements]);
 
   function start(t){setSessionType(t);setView('study');}
