@@ -1775,13 +1775,50 @@ function SettingsPage({app,setApp,back}){
         {!app.user?(
           <div>
             <div id="google_signin_button" style={{display:'flex',justifyContent:'center'}}></div>
-            <p style={{fontSize:11,color:'#999',marginTop:12,textAlign:'center'}}>Войди через Google чтобы синхронизировать данные</p>
+            <p style={{fontSize:11,color:'#999',marginTop:12,textAlign:'center'}}>Войди через Google чтобы включить облачную синхронизацию</p>
           </div>
         ):(
-          <div style={{background:'rgba(148,161,135,.1)',border:'1.5px solid rgba(148,161,135,.25)',borderRadius:'1rem',padding:14,marginBottom:12}}>
-            <div style={{fontSize:13,fontWeight:600,color:'var(--sage)',marginBottom:8}}>✓ Вход выполнен</div>
-            <div style={{fontSize:12,color:'#888'}}>{app.user.email}</div>
-            <button className="btn" style={{width:'100%',marginTop:12,padding:'10px 12px',fontSize:12,background:'transparent',border:'1.5px solid rgba(148,161,135,.25)',color:'var(--sage)',borderRadius:'999px',cursor:'pointer',fontFamily:'inherit',fontWeight:600}} onClick={()=>setApp({...app,user:null})}>Выйти</button>
+          <div>
+            <div style={{background:'rgba(148,161,135,.1)',border:'1.5px solid rgba(148,161,135,.25)',borderRadius:'1rem',padding:14,marginBottom:12}}>
+              <div style={{fontSize:13,fontWeight:600,color:'var(--sage)',marginBottom:8}}>✓ Вход выполнен</div>
+              <div style={{fontSize:12,color:'#888'}}>{app.user.email}</div>
+            </div>
+            <div style={{display:'flex',gap:8,marginBottom:12}}>
+              <button className="btn btn-primary" style={{flex:1,padding:'11px 12px',fontSize:12}} onClick={()=>{
+                const blob=new Blob([JSON.stringify(app)],{type:'application/json'});
+                const url=URL.createObjectURL(blob);
+                const a=document.createElement('a');
+                a.href=url;
+                a.download='english-journal-'+todayStr()+'.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                setMsg('✅ Данные скачаны!');
+              }}>💾 Скачать</button>
+              <button className="btn btn-secondary" style={{flex:1,padding:'11px 12px',fontSize:12}} onClick={()=>{
+                const input=document.createElement('input');
+                input.type='file';
+                input.accept='.json';
+                input.onchange=(e)=>{
+                  const f=e.target.files?.[0];
+                  if(!f)return;
+                  const r=new FileReader();
+                  r.onload=()=>{
+                    try{
+                      const d=JSON.parse(r.result);
+                      setApp(d);
+                      saveData(d);
+                      setMsg('✅ Данные загружены с облака!');
+                    }catch(err){
+                      setMsg('❌ Ошибка загрузки файла');
+                    }
+                  };
+                  r.readAsText(f);
+                };
+                input.click();
+              }}>📤 Загрузить</button>
+            </div>
+            <p style={{fontSize:11,color:'#999',textAlign:'center',lineHeight:1.5}}>💡 Скачай данные сюда, загрузи в Google Drive на компьютере, загрузи обратно на телефон</p>
+            <button className="btn" style={{width:'100%',marginTop:8,padding:'10px 12px',fontSize:12,background:'transparent',border:'1.5px solid rgba(148,161,135,.25)',color:'var(--sage)',borderRadius:'999px',cursor:'pointer',fontFamily:'inherit',fontWeight:600}} onClick={()=>setApp({...app,user:null})}>Выйти</button>
           </div>
         )}
       </div>
@@ -1800,12 +1837,41 @@ function SettingsPage({app,setApp,back}){
 }
 
 // ────── APP ROOT ──────
+// ════════════════════════════════════════════════════════════════
+// AUTO SYNC BETWEEN TABS
+// ════════════════════════════════════════════════════════════════
+function setupAutoSync(){
+  // Listen for storage changes from other tabs
+  window.addEventListener('storage',(e)=>{
+    if(e.key==='my-eng-v3'&&e.newValue){
+      try{
+        const newData=JSON.parse(e.newValue);
+        // Notify via custom event
+        window.dispatchEvent(new CustomEvent('dataSync',{detail:newData}));
+      }catch(e){}
+    }
+  });
+}
+
 function App(){
   const[app,setAppRaw]=useState(initApp);
   const[view,setView]=useState('home');
   const[sessionType,setSessionType]=useState('learn');
   const[welcome,setWelcome]=useState(false);
   const[newAch,setNewAch]=useState([]);
+
+  useEffect(()=>{
+    setupAutoSync();
+    
+    // Listen for sync events from other tabs/windows
+    const handleSync=(e)=>{
+      const newData=e.detail;
+      setAppRaw(newData);
+    };
+    
+    window.addEventListener('dataSync',handleSync);
+    return()=>window.removeEventListener('dataSync',handleSync);
+  },[]);
 
   useEffect(()=>{
     const today=todayStr();
