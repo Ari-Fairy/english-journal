@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -8,7 +8,6 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script async src="https://accounts.google.com/gsi/client"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -80,24 +79,6 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .recog-error{background:rgba(212,165,165,.07);border:1px solid rgba(212,165,165,.25);border-radius:14px;padding:12px;margin-top:12px;text-align:center}
 .recog-error .msg{font-size:14px;color:var(--rose);margin-bottom:4px}
 .recog-error .sub{font-size:12px;color:#aaa}
-
-.word-add-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(74,68,63,.25);display:flex;align-items:center;justify-content:center;z-index:250;padding:20px;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
-.word-add-card{background:rgba(212,165,165,.12);border:1.5px solid rgba(212,165,165,.3);border-radius:1.75rem;padding:24px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.12)}
-.word-add-card h3{font-family:'Lora',serif;font-style:italic;font-size:18px;color:var(--warm);margin-bottom:16px;font-weight:600}
-.word-add-card .word-disp{font-family:'Lora',serif;font-style:italic;font-size:28px;color:var(--rose);font-weight:600;margin-bottom:16px;padding:12px;background:rgba(253,251,247,.8);border-radius:1rem;text-align:center}
-.word-add-card .field-group{margin-bottom:14px}
-.word-add-card .field-label{font-size:12px;color:#666;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;display:block;font-weight:600}
-.word-add-card .field-label-text{color:var(--warm)}
-
-/* Book styles */
-.book-read-msg{background:rgba(148,161,135,.12);border:1.5px solid rgba(148,161,135,.3);border-radius:1.25rem;padding:20px;text-align:center}
-.book-read-msg .big{font-size:44px;margin-bottom:12px}
-.book-read-msg .title{font-family:'Lora',serif;font-style:italic;font-size:18px;color:var(--warm);margin-bottom:8px;font-weight:600}
-.book-read-msg .desc{font-size:13px;color:#888;line-height:1.5}
-
-/* Google Sign In */
-#google_signin_button{margin:16px 0}
-
 
 /* Book reader */
 .book-text{font-family:'Lora',serif;font-size:17px;line-height:1.85;color:var(--warm);padding:4px}
@@ -341,73 +322,6 @@ function checkAchievements(app){
   return newOnes;
 }
 
-// ────── GITHUB AUTO SYNC ──────
-const GH_TOKEN='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';
-const GH_USER='ari-fairy';
-const GH_REPO='english-journal';
-const GH_FILE='progress.json';
-let lastSyncTime=0;
-
-async function autoSaveToGithub(appData){
-  // Throttle saves - max 1 per 5 seconds
-  const now=Date.now();
-  if(now-lastSyncTime<5000)return;
-  lastSyncTime=now;
-  
-  try{
-    const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
-    
-    // Get current file SHA
-    const checkRes=await fetch(url,{
-      headers:{'Authorization':'token '+GH_TOKEN,'Accept':'application/vnd.github.v3+json'}
-    });
-    
-    let sha=undefined;
-    if(checkRes.ok){
-      const data=await checkRes.json();
-      sha=data.sha;
-    }
-    
-    // Save file
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(appData))));
-    const payload={
-      message:'Auto sync '+new Date().toISOString(),
-      content:content
-    };
-    if(sha)payload.sha=sha;
-    
-    const saveRes=await fetch(url,{
-      method:'PUT',
-      headers:{'Authorization':'token '+GH_TOKEN,'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-    
-    if(saveRes.ok){
-      console.log('✓ Auto saved to GitHub');
-    }
-  }catch(e){
-    console.error('Auto save error:',e);
-  }
-}
-
-async function autoLoadFromGithub(){
-  try{
-    const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
-    const res=await fetch(url,{
-      headers:{'Authorization':'token '+GH_TOKEN,'Accept':'application/vnd.github.v3+json'}
-    });
-    
-    if(!res.ok)return null;
-    
-    const data=await res.json();
-    const json=JSON.parse(decodeURIComponent(escape(atob(data.content))));
-    return json;
-  }catch(e){
-    console.error('Auto load error:',e);
-    return null;
-  }
-}
-
 // ────── HELPERS ──────
 function loadData(){try{const r=localStorage.getItem('my-eng-v3');if(r)return JSON.parse(r);}catch(e){}return null;}
 function saveData(d){localStorage.setItem('my-eng-v3',JSON.stringify(d));}
@@ -526,7 +440,7 @@ function StudyPage({app,setApp,sessionType,exit}){
   const expected=cur?(pDir==='en-ru'?cur.ru:cur.en):'';
   const aLang=pDir==='en-ru'?'ru-RU':'en-US';
   const choices=useMemo(()=>{if(!cur||mode!=='choice')return[];const others=app.words.filter(w=>w.id!==cur.id).map(w=>pDir==='en-ru'?w.ru:w.en);return shuffle([expected,...shuffle(others).slice(0,3)]);},[cur?.id,mode,pDir,expected]);
-  useEffect(()=>{if(mode==='written')setTimeout(()=>{if(inputRef.current)inputRef.current.focus();},200);},[cur?.id]);
+  useEffect(()=>{if(cur&&pDir==='en-ru')speak(cur.en);if(mode==='written')setTimeout(()=>{if(inputRef.current)inputRef.current.focus();},200);},[cur?.id]);
 
   function handleAns(a){
     if(!cur||answered)return;
@@ -534,10 +448,7 @@ function StudyPage({app,setApp,sessionType,exit}){
     const correct=dontRemember?false:isCorrect(a,expected);
     if(dontRemember)a=expected;
     setOk(correct);setAnswered(true);setAns(a);beep(correct);
-    // Only speak in non-cards modes and not immediately
-    if(mode!=='cards'&&mode!=='voice'){
-      setTimeout(()=>speak(cur.en),400);
-    }
+    setTimeout(()=>speak(cur.en),300);
     setScore(s=>({c:s.c+(correct?1:0),w:s.w+(correct?0:1)}));
     const today=todayStr();
     const nw=app.words.map(w=>{if(w.id!==cur.id)return w;return{...w,correct:w.correct+(correct?1:0),wrong:w.wrong+(correct?0:1),streak:correct?w.streak+1:0,learned:correct?(sessionType==='learn'||w.learned):w.learned,learnedDate:correct&&sessionType==='learn'&&!w.learned?today:w.learnedDate,lastReviewed:correct?today:w.lastReviewed};});
@@ -574,19 +485,12 @@ function StudyPage({app,setApp,sessionType,exit}){
     return app.words.filter(w=>w.learned);
   }
 
-  if(stage==='mode'){
-    if(sessionType==='learn'){
-      // For learning: ONLY cards mode
-      setMode('cards');
-      setStage('dir');
-      return null;
-    }
-    return(
+  if(stage==='mode'){return(
     <div className="fade-in">
       <button className="back-btn" onClick={exit}>← Назад</button>
-      <h2 className="section-title" style={{textAlign:'center',marginTop:16}}>Как повторяем?</h2>
+      <h2 className="section-title" style={{textAlign:'center',marginTop:16}}>Как учим?</h2>
       <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:10}}>
-        {[{v:'cards',l:'🃏 Карточки',s:'Флип-карточки'},{v:'choice',l:'🎯 Выбор варианта',s:'Выбери из 4 вариантов'},{v:'written',l:'✍️ Письменно',s:'Напиши ответ'},{v:'voice',l:'🎤 Голосом',s:'Произнеси ответ'}].map(m=>(
+        {[{v:'choice',l:'🎯 Выбор варианта',s:'Выбери из 4 вариантов'},{v:'written',l:'✍️ Письменно',s:'Напиши ответ'},{v:'voice',l:'🎤 Голосом',s:'Произнеси ответ'}].map(m=>(
           <button key={m.v} className="card btn" style={{textAlign:'left',padding:18}} onClick={()=>{if(m.v==='voice'&&micGranted===null){navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{s.getTracks().forEach(t=>t.stop());setMicGranted(true);setMode('voice');setStage('dir');}).catch(()=>setMicGranted(false));return;}setMode(m.v);setStage('dir');}}>
             <div style={{fontFamily:"'Lora',serif",fontStyle:'italic',fontSize:18}}>{m.l}</div>
             <div style={{fontSize:12,color:'#aaa',marginTop:4}}>{m.s}</div>
@@ -624,47 +528,6 @@ function StudyPage({app,setApp,sessionType,exit}){
   );}
 
   if(!cur)return<div style={{textAlign:'center',paddingTop:40}}><p>Нет слов</p><button className="btn btn-primary" onClick={exit}>Назад</button></div>;
-
-  // CARDS mode rendering
-  if(mode==='cards'){
-    const cardFlipped=ans==='flipped';
-    return(
-      <div className="fade-in">
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-          <button className="back-btn" onClick={exit}>✕</button>
-          <span className="badge">{idx+1}/{queue.length}</span>
-          <span style={{fontSize:12,color:'var(--sage)',fontWeight:600}}>{score.c}✓</span>
-        </div>
-        <div className="progress-bar"><div className="progress-fill" style={{width:`${(idx/queue.length)*100}%`}}/></div>
-        <div className="card" style={{marginTop:18,paddingTop:0,paddingBottom:0,paddingLeft:0,paddingRight:0,borderRadius:'1.75rem',overflow:'hidden'}}>
-          <div className="flip-card" onClick={()=>setAns(cardFlipped?'':'flipped')}>
-            <div className={`flip-inner ${cardFlipped?'flipped':''}`}>
-              <div className="flip-front">
-                <div style={{paddingTop:20,paddingBottom:20}}>
-                  <div className="sub-text" style={{marginBottom:8}}>{pDir==='en-ru'?'Русский':'English'}</div>
-                  <div className="study-word">{pDir==='en-ru'?cur.ru:cur.en}</div>
-                  <div style={{fontSize:11,color:'#aaa',marginTop:16}}>Нажми чтобы увидеть перевод →</div>
-                </div>
-                <button className="btn btn-ghost" style={{fontSize:18,paddingLeft:20,paddingRight:20,paddingBottom:20}} onClick={(e)=>{e.stopPropagation();speak(pDir==='en-ru'?cur.ru:cur.en);}}>🔊</button>
-              </div>
-              <div className="flip-back">
-                <div style={{paddingTop:20,paddingBottom:20}}>
-                  <div className="sub-text" style={{marginBottom:8}}>{pDir==='en-ru'?'English':'Русский'}</div>
-                  <div className="study-word">{pDir==='en-ru'?cur.en:cur.ru}</div>
-                  <div style={{fontSize:11,color:'#aaa',marginTop:16}}>← Нажми чтобы вернуться</div>
-                </div>
-                <button className="btn btn-ghost" style={{fontSize:18,paddingLeft:20,paddingRight:20,paddingBottom:20}} onClick={(e)=>{e.stopPropagation();speak(pDir==='en-ru'?cur.en:cur.ru);}}>🔊</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style={{marginTop:18,display:'flex',gap:10}}>
-          <button className="btn btn-outline" style={{flex:1,padding:15}} onClick={()=>{setOk(false);setAnswered(true);setTimeout(next,600);}}>👈 Не знаю</button>
-          <button className="btn btn-primary" style={{flex:1,padding:15}} onClick={()=>{setOk(true);setAnswered(true);handleAns(expected);setTimeout(next,600);}}>👉 Знаю</button>
-        </div>
-      </div>
-    );
-  }
 
   return(
     <div className="fade-in">
@@ -1381,14 +1244,10 @@ function ReaderPage({app,setApp,back}){
   const[addedWords,setAddedWords]=useState({});
   const[toast,setToast]=useState('');
   const textRef=useRef(null);
-  
-  const today=todayStr();
   const todayFeatured=getTodaysFeatured();
-  
-  // NEW: Track which story user read today (per level)
-  const dailyBooksRead=app.stats.dailyBooksRead||{};
-  const todayReadLevels=dailyBooksRead[today]||[];
-  const isLevelReadToday=selectedLevel?todayReadLevels.includes(selectedLevel):false;
+  // Track which stories read today
+  const readToday=app.stats.readToday||{};
+  const isReadToday=selectedLevel?readToday[todayStr()]===selectedLevel:false;
 
   function handleWordClick(word,e){
     const clean=word.replace(/[^a-zA-Z'\-]/g,'').toLowerCase();
@@ -1431,10 +1290,7 @@ function ReaderPage({app,setApp,back}){
 
   function finishReading(){
     const today=todayStr();
-    // Add this level to today's read books
-    const newReadLevels=[...todayReadLevels,selectedLevel];
-    const newDailyBooks={...dailyBooksRead,[today]:newReadLevels};
-    const newStats={...app.stats,booksRead:(app.stats.booksRead||0)+1,dailyBooksRead:newDailyBooks};
+    const newStats={...app.stats,booksRead:(app.stats.booksRead||0)+1,readToday:{...readToday,[today]:selectedLevel}};
     const na={...app,stats:newStats};
     const achs=checkAchievements(na);if(achs.length)na.stats={...na.stats,achievements:[...(na.stats.achievements||[]),...achs]};
     setApp(na);setFinished(true);
@@ -1501,20 +1357,28 @@ food
         <button className="back-btn" onClick={back} style={{marginBottom:16}}>← Назад</button>
         <h2 className="section-title" style={{marginBottom:4}}>Читалка</h2>
         <p style={{fontSize:13,color:'#aaa',marginBottom:16}}>Нажми на незнакомое слово — Claude переведёт и добавит в словарь</p>
+        <div style={{background:'rgba(212,165,165,.08)',border:'1.5px solid rgba(212,165,165,.2)',borderRadius:'1.25rem',padding:'12px 16px',marginBottom:16,display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:22}}>⭐</span>
+          <div>
+            <div style={{fontSize:11,color:'var(--rose)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600}}>Книга дня</div>
+            <div style={{fontSize:14,fontWeight:500,marginTop:1}}>{BOOK_STORIES[todayFeatured].title} <span className={`level-badge level-${todayFeatured}`}>{todayFeatured}</span></div>
+          </div>
+        </div>
         {Object.values(BOOK_STORIES).map(story=>{
-          const isReadTodayLevel=todayReadLevels.includes(story.level);
+          const wasRead=Object.values(app.stats.readToday||{}).includes(story.level);
           return(
-            <div key={story.level} className="card" style={{marginBottom:10,cursor:isReadTodayLevel?'not-allowed':'pointer',opacity:isReadTodayLevel?.5:1}} onClick={()=>{if(!isReadTodayLevel){setSelectedLevel(story.level);setAddedWords({});setFinished(false);}}}>
+            <div key={story.level} className="card" style={{marginBottom:10,cursor:'pointer',opacity:wasRead?.75:1}} onClick={()=>{setSelectedLevel(story.level);setAddedWords({});setFinished(false);}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 <div>
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                     <span className={`level-badge level-${story.level}`}>{story.level}</span>
-                    {isReadTodayLevel&&<span style={{fontSize:11,color:'var(--sage)'}}>✓ прочитана</span>}
+                    {story.level===todayFeatured&&<span style={{fontSize:11,color:'var(--rose)'}}>⭐ сегодня</span>}
+                    {wasRead&&<span style={{fontSize:11,color:'var(--sage)'}}>✓ прочитана</span>}
                   </div>
                   <div style={{fontFamily:"'Lora',serif",fontStyle:'italic',fontSize:17}}>{story.title}</div>
                   <div style={{fontSize:12,color:'#aaa',marginTop:3}}>{story.text.split(' ').length} слов</div>
                 </div>
-                <span style={{fontSize:22,opacity:isReadTodayLevel?.2:.4}}>→</span>
+                <span style={{fontSize:22,opacity:.4}}>→</span>
               </div>
             </div>
           );
@@ -1536,10 +1400,13 @@ food
         {wordsAdded>0&&<div className="card" style={{marginBottom:16,padding:14}}>
           <div style={{fontSize:13,color:'var(--sage)',fontWeight:600}}>✅ Добавлено {wordsAdded} новых слов в словарь</div>
         </div>}
-        <div className="book-read-msg" style={{marginTop:20,marginBottom:20}}>
-          <div style={{fontSize:44,marginBottom:12}}>🌙</div>
-          <div style={{fontFamily:"'Lora',serif",fontStyle:'italic',fontSize:18,color:'var(--warm)',marginBottom:8,fontWeight:600}}>Возвращайтесь завтра!</div>
-          <div style={{fontSize:13,color:'#888',lineHeight:1.5}}>Каждый день появляется новая книга для каждого уровня. Завтра у уровня <strong>{story.level}</strong> будет другая книга.</div>
+        <div className="card" style={{marginBottom:20,padding:16,background:'rgba(212,165,165,.06)',border:'1.5px solid rgba(212,165,165,.2)'}}>
+          <div style={{fontSize:11,color:'var(--rose)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8,fontWeight:600}}>⏰ Завтра появится</div>
+          <div style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
+            <span className={`level-badge level-${tomorrowLevel}`}>{tomorrowLevel}</span>
+            <span style={{fontFamily:"'Lora',serif",fontStyle:'italic',fontSize:17}}>{tomorrowStory.title}</span>
+          </div>
+          <div style={{fontSize:12,color:'#aaa',marginTop:6}}>Новая книга каждый день · уровень меняется</div>
         </div>
         <button className="btn btn-primary" style={{width:'100%',padding:14,marginBottom:10}} onClick={()=>{setSelectedLevel(null);setFinished(false);}}>← К списку книг</button>
         <button className="btn btn-secondary" style={{width:'100%',padding:14}} onClick={back}>На главную</button>
@@ -1589,9 +1456,6 @@ function WordPopup({word,pos,appWords,onAdd,onClose}){
   const[loading,setLoading]=useState(true);
   const[adding,setAdding]=useState(false);
   const[added,setAdded]=useState(false);
-  const[showSettings,setShowSettings]=useState(false);
-  const[selectedTopic,setSelectedTopic]=useState('general');
-  const[selectedPos,setSelectedPos]=useState('noun');
   const existing=appWords.find(w=>w.en.toLowerCase()===word.clean.toLowerCase());
 
   useEffect(()=>{
@@ -1625,15 +1489,10 @@ function WordPopup({word,pos,appWords,onAdd,onClose}){
 
   function handleAdd(){
     if(adding||added)return;
-    setShowSettings(true);
-  }
-
-  function confirmAdd(){
-    if(adding||added||!translation.trim())return;
     setAdding(true);
     const ok=onAdd(word.clean,translation);
     setAdded(true);setAdding(false);
-    setShowSettings(false);
+    // Close popup after brief success flash
     setTimeout(()=>onClose(),800);
   }
 
@@ -1668,39 +1527,6 @@ function WordPopup({word,pos,appWords,onAdd,onClose}){
               {adding?'⏳...':'+ В словарь'}
             </button>}
       </div>
-      {showSettings&&(
-        <div className="word-add-modal" onClick={()=>setShowSettings(false)}>
-          <div className="word-add-card" onClick={e=>e.stopPropagation()}>
-            <h3>Добавить слово</h3>
-            <div className="word-disp">{word.clean}</div>
-            <div className="field-group">
-              <label className="field-label"><span className="field-label-text">Часть речи</span></label>
-              <select className="select" value={selectedPos} onChange={e=>setSelectedPos(e.target.value)}>
-                <option value="noun">Существительное</option>
-                <option value="verb">Глагол</option>
-                <option value="adjective">Прилагательное</option>
-                <option value="adverb">Наречие</option>
-              </select>
-            </div>
-            <div className="field-group">
-              <label className="field-label"><span className="field-label-text">Тема</span></label>
-              <select className="select" value={selectedTopic} onChange={e=>setSelectedTopic(e.target.value)}>
-                <option value="general">General</option>
-                <option value="travel">Travel</option>
-                <option value="food">Food</option>
-                <option value="books">Books</option>
-                <option value="school">School</option>
-                <option value="diary">Diary</option>
-                <option value="nature">Nature</option>
-              </select>
-            </div>
-            <div style={{display:'flex',gap:8,marginTop:16}}>
-              <button className="btn btn-outline" style={{flex:1,padding:'11px 12px',fontSize:12}} onClick={()=>setShowSettings(false)}>Отмена</button>
-              <button className="btn btn-primary" style={{flex:1,padding:'11px 12px',fontSize:12}} onClick={confirmAdd}>Добавить</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1787,49 +1613,14 @@ function StatsPage({app,back}){
 // ────── SETTINGS ──────
 function SettingsPage({app,setApp,back}){
   const[msg,setMsg]=useState('');
-
-  useEffect(()=>{
-    if(window.google&&!app.user){
-      try{
-        window.google.accounts.id.initialize({
-          client_id:'836240276310-urc8bgu3pp9gt6f0tt6ncus5e3akj8va.apps.googleusercontent.com',
-          callback:(response)=>{
-            try{
-              const base64Url=response.credential.split('.')[1];
-              const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
-              const jsonPayload=decodeURIComponent(atob(base64).split('').map((c)=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-              const decoded=JSON.parse(jsonPayload);
-              const newApp={...app,user:{name:decoded.name,email:decoded.email,picture:decoded.picture}};
-              setApp(newApp);
-              
-              // Load latest from GitHub after login
-              autoLoadFromGithub().then(remoteData=>{
-                if(remoteData){
-                  setAppRaw(remoteData);
-                  saveData(remoteData);
-                  setMsg('✓ Вход выполнен! Данные загружены из GitHub');
-                }else{
-                  setMsg('✓ Успешный вход через Google!');
-                }
-                setTimeout(()=>setMsg(''),3000);
-              });
-            }catch(e){
-              setMsg('✗ Ошибка при обработке данных Google');
-            }
-          },
-          auto_select:false
-        });
-        window.google.accounts.id.renderButton(
-          document.getElementById('google_signin_button'),
-          {theme:'outline',size:'large',text:'signin_with'}
-        );
-      }catch(e){
-        console.error('Google init error:',e);
-      }
+  const[ghToken,setGhToken]=useState(()=>{
+    const saved=localStorage.getItem('gh-token');
+    if(!saved){
+      localStorage.setItem('gh-token','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');
+      return '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';
     }
-  },[app.user]);
-
-  const[ghToken,setGhToken]=useState(()=>localStorage.getItem('gh-token')||'');
+    return saved;
+  });
   const[showToken,setShowToken]=useState(false);
   const[syncing,setSyncing]=useState(false);
   const GH_USER='ari-fairy';const GH_REPO='english-journal';const GH_FILE='progress.json';
@@ -1847,20 +1638,19 @@ function SettingsPage({app,setApp,back}){
       <h2 className="section-title" style={{marginBottom:16}}>Настройки</h2>
       {msg&&<div className="card" style={{textAlign:'center',marginBottom:12,padding:11,fontSize:14}}>{msg}</div>}
       <div className="card" style={{marginBottom:12}}>
-        <h3 style={{fontSize:14,fontWeight:600,marginBottom:4}}>☁️ Google синхронизация</h3>
-        <p style={{fontSize:12,color:'#aaa',marginBottom:12}}>Синхронизируй свой прогресс между устройствами</p>
-        {!app.user?(
-          <div>
-            <div id="google_signin_button" style={{display:'flex',justifyContent:'center'}}></div>
-            <p style={{fontSize:11,color:'#999',marginTop:12,textAlign:'center'}}>Войди через Google чтобы синхронизировать данные</p>
+        <h3 style={{fontSize:14,fontWeight:600,marginBottom:4}}>☁️ GitHub синхронизация</h3>
+        <p style={{fontSize:12,color:'#aaa',marginBottom:12}}>Сохраняй прогресс в облако</p>
+        <div style={{display:'flex',gap:8,marginBottom:12}}>
+          <button className="btn btn-primary" style={{flex:1,padding:12,fontSize:13}} onClick={syncSave} disabled={syncing}>☁️ Сохранить</button>
+          <button className="btn btn-secondary" style={{flex:1,padding:12,fontSize:13}} onClick={syncLoad} disabled={syncing}>⬇️ Загрузить</button>
+        </div>
+        <div style={{borderTop:'1px solid #f0ebe3',paddingTop:12}}>
+          <div style={{fontSize:12,color:'#ccc',marginBottom:6,display:'flex',justifyContent:'space-between'}}>
+            <span>GitHub токен</span>
+            <button onClick={()=>setShowToken(v=>!v)} style={{background:'none',border:'none',color:'#ccc',cursor:'pointer',fontSize:12}}>{showToken?'скрыть':'показать'}</button>
           </div>
-        ):(
-          <div style={{background:'rgba(148,161,135,.1)',border:'1.5px solid rgba(148,161,135,.25)',borderRadius:'1rem',padding:14,marginBottom:12}}>
-            <div style={{fontSize:13,fontWeight:600,color:'var(--sage)',marginBottom:8}}>✓ Вход выполнен</div>
-            <div style={{fontSize:12,color:'#888'}}>{app.user.email}</div>
-            <button className="btn" style={{width:'100%',marginTop:12,padding:'10px 12px',fontSize:12,background:'transparent',border:'1.5px solid rgba(148,161,135,.25)',color:'var(--sage)',borderRadius:'999px',cursor:'pointer',fontFamily:'inherit',fontWeight:600}} onClick={()=>setApp({...app,user:null})}>Выйти</button>
-          </div>
-        )}
+          <input type={showToken?'text':'password'} placeholder="ghp_xxxxxxxxxxxx" value={ghToken} onChange={e=>saveToken(e.target.value)} className="input" style={{fontSize:13}}/>
+        </div>
       </div>
       <div className="card" style={{marginBottom:12}}>
         <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>💾 Ручное копирование</h3>
@@ -1883,21 +1673,6 @@ function App(){
   const[sessionType,setSessionType]=useState('learn');
   const[welcome,setWelcome]=useState(false);
   const[newAch,setNewAch]=useState([]);
-  const[loading,setLoading]=useState(true);
-
-  // LOAD FROM GITHUB ON START
-  useEffect(()=>{
-    async function loadInitial(){
-      const remoteData=await autoLoadFromGithub();
-      if(remoteData){
-        setAppRaw(remoteData);
-        saveData(remoteData);
-        console.log('✅ Загружено из GitHub');
-      }
-      setLoading(false);
-    }
-    loadInitial();
-  },[]);
 
   useEffect(()=>{
     const today=todayStr();
@@ -1909,9 +1684,31 @@ function App(){
       const na={...app,stats:newStats};setAppRaw(na);saveData(na);
       if(Object.keys(app.stats.daily||{}).length>0)setWelcome(true);
     }
+    
+    // LOAD FROM GITHUB on app start
+    if(ghToken){
+      syncLoadAuto(ghToken);
+    }
   },[]);
+  
+  // Auto load function
+  const syncLoadAuto=async(token)=>{
+    try{
+      const url=`https://api.github.com/repos/ari-fairy/english-journal/contents/progress.json`;
+      const res=await fetch(url,{headers:{'Authorization':'token '+token}});
+      if(!res.ok)return;
+      const d=await res.json();
+      const json=JSON.parse(decodeURIComponent(escape(atob(d.content))));
+      setAppRaw(json);
+      saveData(json);
+      console.log('✓ Loaded from GitHub');
+    }catch(e){
+      console.error('Auto load error:',e);
+    }
+  };
 
   const setApp=useCallback((a)=>{
+    // Check for new achievements on every app update
     const prevAchs=app.stats.achievements||[];
     const currAchs=a.stats?.achievements||[];
     const fresh=currAchs.filter(id=>!prevAchs.includes(id));
@@ -1922,9 +1719,37 @@ function App(){
     }
     setAppRaw(a);
     saveData(a);
+    
     // AUTO SAVE TO GITHUB
-    autoSaveToGithub(a);
-  },[app.stats.achievements]);
+    if(ghToken){
+      syncSaveAuto(a,ghToken);
+    }
+  },[app.stats.achievements,ghToken]);
+
+  // Auto save function (without notifications)
+  const syncSaveAuto=async(appData,token)=>{
+    try{
+      const url=`https://api.github.com/repos/ari-fairy/english-journal/contents/progress.json`;
+      const check=await fetch(url,{headers:{'Authorization':'token '+token}});
+      let sha=undefined;
+      if(check.ok){
+        const d=await check.json();
+        sha=d.sha;
+      }
+      const content=btoa(unescape(encodeURIComponent(JSON.stringify(appData))));
+      const payload={message:'Auto sync '+todayStr(),content:content};
+      if(sha)payload.sha=sha;
+      
+      await fetch(url,{
+        method:'PUT',
+        headers:{'Authorization':'token '+token,'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      console.log('✓ Auto saved to GitHub');
+    }catch(e){
+      console.error('Auto save error:',e);
+    }
+  };
 
   function start(t){setSessionType(t);setView('study');}
 
