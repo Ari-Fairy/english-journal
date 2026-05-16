@@ -1929,7 +1929,7 @@ function SettingsPage({app,setApp,back}){
           <div style={{background:'rgba(148,161,135,.1)',border:'1.5px solid rgba(148,161,135,.25)',borderRadius:'1rem',padding:14,marginBottom:12}}>
             <div style={{fontSize:13,fontWeight:600,color:'var(--sage)',marginBottom:8}}>✓ Вход выполнен</div>
             <div style={{fontSize:12,color:'#888'}}>{app.user.email}</div>
-            <button className="btn" style={{width:'100%',marginTop:12,padding:'10px 12px',fontSize:12,background:'transparent',border:'1.5px solid rgba(148,161,135,.25)',color:'var(--sage)',borderRadius:'999px',cursor:'pointer',fontFamily:'inherit',fontWeight:600}} onClick={async()=>{if(supabase){await supabase.auth.signOut();}setApp({...app,user:null});setMsg('✓ Вы вышли');}}>Выйти</button>
+            <button className="btn" style={{width:'100%',marginTop:12,padding:'10px 12px',fontSize:12,background:'transparent',border:'1.5px solid rgba(148,161,135,.25)',color:'var(--sage)',borderRadius:'999px',cursor:'pointer',fontFamily:'inherit',fontWeight:600}} onClick={async()=>{try{if(supabase){await supabase.auth.signOut();}}catch(e){console.error('Signout error:',e);}setCurrentUser(null);setApp({...app,user:null});setMsg('✓ Вы вышли');}}>Выйти</button>
           </div>
         )}
       </div>
@@ -1956,11 +1956,11 @@ function App(){
   const[newAch,setNewAch]=useState([]);
   const[currentUser,setCurrentUser]=useState(null);
 
-  // INITIALIZE SUPABASE
+  // INITIALIZE SUPABASE AND AUTH LISTENER
   useEffect(()=>{
     initSupabase();
     if(supabase){
-      const unsubscribe=supabase.auth.onAuthStateChange(async(event,session)=>{
+      const{data:{subscription}}=supabase.auth.onAuthStateChange(async(event,session)=>{
         if(session?.user){
           const user={name:session.user.user_metadata?.name,email:session.user.email};
           setCurrentUser(user);
@@ -1972,10 +1972,11 @@ function App(){
             console.log('✅ Данные загружены из Supabase');
           }
         }else{
+          // User signed out
           setCurrentUser(null);
         }
       });
-      return()=>unsubscribe();
+      return()=>subscription?.unsubscribe();
     }
   },[]);
 
