@@ -1686,8 +1686,9 @@ function App(){
     }
     
     // LOAD FROM GITHUB on app start
-    if(ghToken){
-      syncLoadAuto(ghToken);
+    const token='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';
+    if(token){
+      syncLoadAuto(token);
     }
   },[]);
   
@@ -1720,11 +1721,12 @@ function App(){
     setAppRaw(a);
     saveData(a);
     
-    // AUTO SAVE TO GITHUB
-    if(ghToken){
-      syncSaveAuto(a,ghToken);
+    // AUTO SAVE TO GITHUB with ghToken
+    const token='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';
+    if(token){
+      syncSaveAuto(a,token);
     }
-  },[app.stats.achievements,ghToken]);
+  },[]);
 
   // Auto save function (without notifications)
   const syncSaveAuto=async(appData,token)=>{
