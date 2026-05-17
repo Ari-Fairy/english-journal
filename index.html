@@ -128,7 +128,14 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <div id="root"></div>
 <script type="text/babel">
 const {useState,useEffect,useMemo,useRef,useCallback,useLayoutEffect}=React;
-const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
+
+// ────── GITHUB CONFIG ──────
+const GH_TOKEN='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';
+const GH_USER='ari-fairy';
+const GH_REPO='english-journal';
+const GH_FILE='progress.json';
+
+// ────── HELPERS ──────
 const todayStr=()=>new Date().toISOString().slice(0,10);
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
 const normalize=s=>s.toLowerCase().trim().replace(/[.,!?;:'"`]/g,'').replace(/\s+/g,' ');
@@ -1613,14 +1620,7 @@ function StatsPage({app,back}){
 // ────── SETTINGS ──────
 function SettingsPage({app,setApp,back}){
   const[msg,setMsg]=useState('');
-  const[ghToken,setGhToken]=useState(()=>{
-    const saved=localStorage.getItem('gh-token');
-    if(!saved){
-      localStorage.setItem('gh-token','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');
-      return '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';
-    }
-    return saved;
-  });
+  const[ghToken,setGhToken]=useState(()=>localStorage.getItem('gh-token')||GH_TOKEN);
   const[showToken,setShowToken]=useState(false);
   const[syncing,setSyncing]=useState(false);
   const GH_USER='ari-fairy';const GH_REPO='english-journal';const GH_FILE='progress.json';
@@ -1684,29 +1684,7 @@ function App(){
       const na={...app,stats:newStats};setAppRaw(na);saveData(na);
       if(Object.keys(app.stats.daily||{}).length>0)setWelcome(true);
     }
-    
-    // LOAD FROM GITHUB on app start
-    const token='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';
-    if(token){
-      syncLoadAuto(token);
-    }
   },[]);
-  
-  // Auto load function
-  const syncLoadAuto=async(token)=>{
-    try{
-      const url=`https://api.github.com/repos/ari-fairy/english-journal/contents/progress.json`;
-      const res=await fetch(url,{headers:{'Authorization':'token '+token}});
-      if(!res.ok)return;
-      const d=await res.json();
-      const json=JSON.parse(decodeURIComponent(escape(atob(d.content))));
-      setAppRaw(json);
-      saveData(json);
-      console.log('✓ Loaded from GitHub');
-    }catch(e){
-      console.error('Auto load error:',e);
-    }
-  };
 
   const setApp=useCallback((a)=>{
     // Check for new achievements on every app update
@@ -1718,40 +1696,8 @@ function App(){
       setNewAch(achObjs);
       setTimeout(()=>setNewAch([]),3500);
     }
-    setAppRaw(a);
-    saveData(a);
-    
-    // AUTO SAVE TO GITHUB with ghToken
-    const token='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';
-    if(token){
-      syncSaveAuto(a,token);
-    }
-  },[]);
-
-  // Auto save function (without notifications)
-  const syncSaveAuto=async(appData,token)=>{
-    try{
-      const url=`https://api.github.com/repos/ari-fairy/english-journal/contents/progress.json`;
-      const check=await fetch(url,{headers:{'Authorization':'token '+token}});
-      let sha=undefined;
-      if(check.ok){
-        const d=await check.json();
-        sha=d.sha;
-      }
-      const content=btoa(unescape(encodeURIComponent(JSON.stringify(appData))));
-      const payload={message:'Auto sync '+todayStr(),content:content};
-      if(sha)payload.sha=sha;
-      
-      await fetch(url,{
-        method:'PUT',
-        headers:{'Authorization':'token '+token,'Content-Type':'application/json'},
-        body:JSON.stringify(payload)
-      });
-      console.log('✓ Auto saved to GitHub');
-    }catch(e){
-      console.error('Auto save error:',e);
-    }
-  };
+    setAppRaw(a);saveData(a);
+  },[app.stats.achievements]);
 
   function start(t){setSessionType(t);setView('study');}
 
