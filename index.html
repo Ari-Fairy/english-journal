@@ -1675,7 +1675,7 @@ function SettingsPage({app,setApp,back}){
   function reset(){if(!confirm('Удалить все данные?'))return;localStorage.removeItem('my-eng-v3');location.reload();}
   
   useEffect(()=>{
-    if(window.google){
+    if(window.google&&document.getElementById('google_signin')){
       window.google.accounts.id.initialize({
         client_id:'836240276310-urc8bgu3pp9gt6f0tt6ncus5e3akj8va.apps.googleusercontent.com',
         callback:(response)=>{
@@ -1693,12 +1693,13 @@ function SettingsPage({app,setApp,back}){
         },
         auto_select:false
       });
+      // Re-render button every time component updates
       window.google.accounts.id.renderButton(
         document.getElementById('google_signin'),
         {theme:'outline',size:'large',text:'signin_with'}
       );
     }
-  },[]);
+  },[app.user]);
   
   return(
     <div className="fade-in">
