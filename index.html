@@ -81,6 +81,24 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .recog-error .msg{font-size:14px;color:var(--rose);margin-bottom:4px}
 .recog-error .sub{font-size:12px;color:#aaa}
 
+.word-add-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(74,68,63,.25);display:flex;align-items:center;justify-content:center;z-index:250;padding:20px;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+.word-add-card{background:rgba(212,165,165,.12);border:1.5px solid rgba(212,165,165,.3);border-radius:1.75rem;padding:24px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.12)}
+.word-add-card h3{font-family:'Lora',serif;font-style:italic;font-size:18px;color:var(--warm);margin-bottom:16px;font-weight:600}
+.word-add-card .word-disp{font-family:'Lora',serif;font-style:italic;font-size:28px;color:var(--rose);font-weight:600;margin-bottom:16px;padding:12px;background:rgba(253,251,247,.8);border-radius:1rem;text-align:center}
+.word-add-card .field-group{margin-bottom:14px}
+.word-add-card .field-label{font-size:12px;color:#666;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;display:block;font-weight:600}
+.word-add-card .field-label-text{color:var(--warm)}
+
+/* Book styles */
+.book-read-msg{background:rgba(148,161,135,.12);border:1.5px solid rgba(148,161,135,.3);border-radius:1.25rem;padding:20px;text-align:center}
+.book-read-msg .big{font-size:44px;margin-bottom:12px}
+.book-read-msg .title{font-family:'Lora',serif;font-style:italic;font-size:18px;color:var(--warm);margin-bottom:8px;font-weight:600}
+.book-read-msg .desc{font-size:13px;color:#888;line-height:1.5}
+
+/* Google Sign In */
+#google_signin_button{margin:16px 0}
+
+
 /* Book reader */
 .book-text{font-family:'Lora',serif;font-size:17px;line-height:1.85;color:var(--warm);padding:4px}
 .book-word{cursor:pointer;border-radius:4px;padding:0 1px;transition:background .15s;display:inline}
@@ -129,14 +147,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <div id="root"></div>
 <script type="text/babel">
 const {useState,useEffect,useMemo,useRef,useCallback,useLayoutEffect}=React;
-
-// ────── GITHUB CONFIG ──────
-const GH_TOKEN='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';
-const GH_USER='ari-fairy';
-const GH_REPO='english-journal';
-const GH_FILE='progress.json';
-
-// ────── HELPERS ──────
+const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36);
 const todayStr=()=>new Date().toISOString().slice(0,10);
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
 const normalize=s=>s.toLowerCase().trim().replace(/[.,!?;:'"`]/g,'').replace(/\s+/g,' ');
@@ -448,7 +459,7 @@ function StudyPage({app,setApp,sessionType,exit}){
   const expected=cur?(pDir==='en-ru'?cur.ru:cur.en):'';
   const aLang=pDir==='en-ru'?'ru-RU':'en-US';
   const choices=useMemo(()=>{if(!cur||mode!=='choice')return[];const others=app.words.filter(w=>w.id!==cur.id).map(w=>pDir==='en-ru'?w.ru:w.en);return shuffle([expected,...shuffle(others).slice(0,3)]);},[cur?.id,mode,pDir,expected]);
-  useEffect(()=>{if(cur&&pDir==='en-ru')speak(cur.en);if(mode==='written')setTimeout(()=>{if(inputRef.current)inputRef.current.focus();},200);},[cur?.id]);
+  useEffect(()=>{if(mode==='written')setTimeout(()=>{if(inputRef.current)inputRef.current.focus();},200);},[cur?.id]);
 
   function handleAns(a){
     if(!cur||answered)return;
@@ -456,7 +467,10 @@ function StudyPage({app,setApp,sessionType,exit}){
     const correct=dontRemember?false:isCorrect(a,expected);
     if(dontRemember)a=expected;
     setOk(correct);setAnswered(true);setAns(a);beep(correct);
-    setTimeout(()=>speak(cur.en),300);
+    // Only speak in non-cards modes and not immediately
+    if(mode!=='cards'&&mode!=='voice'){
+      setTimeout(()=>speak(cur.en),400);
+    }
     setScore(s=>({c:s.c+(correct?1:0),w:s.w+(correct?0:1)}));
     const today=todayStr();
     const nw=app.words.map(w=>{if(w.id!==cur.id)return w;return{...w,correct:w.correct+(correct?1:0),wrong:w.wrong+(correct?0:1),streak:correct?w.streak+1:0,learned:correct?(sessionType==='learn'||w.learned):w.learned,learnedDate:correct&&sessionType==='learn'&&!w.learned?today:w.learnedDate,lastReviewed:correct?today:w.lastReviewed};});
@@ -493,12 +507,19 @@ function StudyPage({app,setApp,sessionType,exit}){
     return app.words.filter(w=>w.learned);
   }
 
-  if(stage==='mode'){return(
+  if(stage==='mode'){
+    if(sessionType==='learn'){
+      // For learning: ONLY cards mode
+      setMode('cards');
+      setStage('dir');
+      return null;
+    }
+    return(
     <div className="fade-in">
       <button className="back-btn" onClick={exit}>← Назад</button>
-      <h2 className="section-title" style={{textAlign:'center',marginTop:16}}>Как учим?</h2>
+      <h2 className="section-title" style={{textAlign:'center',marginTop:16}}>Как повторяем?</h2>
       <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:10}}>
-        {[{v:'choice',l:'🎯 Выбор варианта',s:'Выбери из 4 вариантов'},{v:'written',l:'✍️ Письменно',s:'Напиши ответ'},{v:'voice',l:'🎤 Голосом',s:'Произнеси ответ'}].map(m=>(
+        {[{v:'cards',l:'🃏 Карточки',s:'Флип-карточки'},{v:'choice',l:'🎯 Выбор варианта',s:'Выбери из 4 вариантов'},{v:'written',l:'✍️ Письменно',s:'Напиши ответ'},{v:'voice',l:'🎤 Голосом',s:'Произнеси ответ'}].map(m=>(
           <button key={m.v} className="card btn" style={{textAlign:'left',padding:18}} onClick={()=>{if(m.v==='voice'&&micGranted===null){navigator.mediaDevices&&navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{s.getTracks().forEach(t=>t.stop());setMicGranted(true);setMode('voice');setStage('dir');}).catch(()=>setMicGranted(false));return;}setMode(m.v);setStage('dir');}}>
             <div style={{fontFamily:"'Lora',serif",fontStyle:'italic',fontSize:18}}>{m.l}</div>
             <div style={{fontSize:12,color:'#aaa',marginTop:4}}>{m.s}</div>
@@ -536,6 +557,47 @@ function StudyPage({app,setApp,sessionType,exit}){
   );}
 
   if(!cur)return<div style={{textAlign:'center',paddingTop:40}}><p>Нет слов</p><button className="btn btn-primary" onClick={exit}>Назад</button></div>;
+
+  // CARDS mode rendering
+  if(mode==='cards'){
+    const cardFlipped=ans==='flipped';
+    return(
+      <div className="fade-in">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <button className="back-btn" onClick={exit}>✕</button>
+          <span className="badge">{idx+1}/{queue.length}</span>
+          <span style={{fontSize:12,color:'var(--sage)',fontWeight:600}}>{score.c}✓</span>
+        </div>
+        <div className="progress-bar"><div className="progress-fill" style={{width:`${(idx/queue.length)*100}%`}}/></div>
+        <div className="card" style={{marginTop:18,paddingTop:0,paddingBottom:0,paddingLeft:0,paddingRight:0,borderRadius:'1.75rem',overflow:'hidden'}}>
+          <div className="flip-card" onClick={()=>setAns(cardFlipped?'':'flipped')}>
+            <div className={`flip-inner ${cardFlipped?'flipped':''}`}>
+              <div className="flip-front">
+                <div style={{paddingTop:20,paddingBottom:20}}>
+                  <div className="sub-text" style={{marginBottom:8}}>{pDir==='en-ru'?'Русский':'English'}</div>
+                  <div className="study-word">{pDir==='en-ru'?cur.ru:cur.en}</div>
+                  <div style={{fontSize:11,color:'#aaa',marginTop:16}}>Нажми чтобы увидеть перевод →</div>
+                </div>
+                <button className="btn btn-ghost" style={{fontSize:18,paddingLeft:20,paddingRight:20,paddingBottom:20}} onClick={(e)=>{e.stopPropagation();speak(pDir==='en-ru'?cur.ru:cur.en);}}>🔊</button>
+              </div>
+              <div className="flip-back">
+                <div style={{paddingTop:20,paddingBottom:20}}>
+                  <div className="sub-text" style={{marginBottom:8}}>{pDir==='en-ru'?'English':'Русский'}</div>
+                  <div className="study-word">{pDir==='en-ru'?cur.en:cur.ru}</div>
+                  <div style={{fontSize:11,color:'#aaa',marginTop:16}}>← Нажми чтобы вернуться</div>
+                </div>
+                <button className="btn btn-ghost" style={{fontSize:18,paddingLeft:20,paddingRight:20,paddingBottom:20}} onClick={(e)=>{e.stopPropagation();speak(pDir==='en-ru'?cur.en:cur.ru);}}>🔊</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{marginTop:18,display:'flex',gap:10}}>
+          <button className="btn btn-outline" style={{flex:1,padding:15}} onClick={()=>{setOk(false);setAnswered(true);setTimeout(next,600);}}>👈 Не знаю</button>
+          <button className="btn btn-primary" style={{flex:1,padding:15}} onClick={()=>{setOk(true);setAnswered(true);handleAns(expected);setTimeout(next,600);}}>👉 Знаю</button>
+        </div>
+      </div>
+    );
+  }
 
   return(
     <div className="fade-in">
@@ -1252,10 +1314,14 @@ function ReaderPage({app,setApp,back}){
   const[addedWords,setAddedWords]=useState({});
   const[toast,setToast]=useState('');
   const textRef=useRef(null);
+  
+  const today=todayStr();
   const todayFeatured=getTodaysFeatured();
-  // Track which stories read today
-  const readToday=app.stats.readToday||{};
-  const isReadToday=selectedLevel?readToday[todayStr()]===selectedLevel:false;
+  
+  // NEW: Track which story user read today (per level)
+  const dailyBooksRead=app.stats.dailyBooksRead||{};
+  const todayReadLevels=dailyBooksRead[today]||[];
+  const isLevelReadToday=selectedLevel?todayReadLevels.includes(selectedLevel):false;
 
   function handleWordClick(word,e){
     const clean=word.replace(/[^a-zA-Z'\-]/g,'').toLowerCase();
@@ -1298,7 +1364,10 @@ function ReaderPage({app,setApp,back}){
 
   function finishReading(){
     const today=todayStr();
-    const newStats={...app.stats,booksRead:(app.stats.booksRead||0)+1,readToday:{...readToday,[today]:selectedLevel}};
+    // Add this level to today's read books
+    const newReadLevels=[...todayReadLevels,selectedLevel];
+    const newDailyBooks={...dailyBooksRead,[today]:newReadLevels};
+    const newStats={...app.stats,booksRead:(app.stats.booksRead||0)+1,dailyBooksRead:newDailyBooks};
     const na={...app,stats:newStats};
     const achs=checkAchievements(na);if(achs.length)na.stats={...na.stats,achievements:[...(na.stats.achievements||[]),...achs]};
     setApp(na);setFinished(true);
@@ -1365,28 +1434,20 @@ food
         <button className="back-btn" onClick={back} style={{marginBottom:16}}>← Назад</button>
         <h2 className="section-title" style={{marginBottom:4}}>Читалка</h2>
         <p style={{fontSize:13,color:'#aaa',marginBottom:16}}>Нажми на незнакомое слово — Claude переведёт и добавит в словарь</p>
-        <div style={{background:'rgba(212,165,165,.08)',border:'1.5px solid rgba(212,165,165,.2)',borderRadius:'1.25rem',padding:'12px 16px',marginBottom:16,display:'flex',alignItems:'center',gap:10}}>
-          <span style={{fontSize:22}}>⭐</span>
-          <div>
-            <div style={{fontSize:11,color:'var(--rose)',textTransform:'uppercase',letterSpacing:'.08em',fontWeight:600}}>Книга дня</div>
-            <div style={{fontSize:14,fontWeight:500,marginTop:1}}>{BOOK_STORIES[todayFeatured].title} <span className={`level-badge level-${todayFeatured}`}>{todayFeatured}</span></div>
-          </div>
-        </div>
         {Object.values(BOOK_STORIES).map(story=>{
-          const wasRead=Object.values(app.stats.readToday||{}).includes(story.level);
+          const isReadTodayLevel=todayReadLevels.includes(story.level);
           return(
-            <div key={story.level} className="card" style={{marginBottom:10,cursor:'pointer',opacity:wasRead?.75:1}} onClick={()=>{setSelectedLevel(story.level);setAddedWords({});setFinished(false);}}>
+            <div key={story.level} className="card" style={{marginBottom:10,cursor:isReadTodayLevel?'not-allowed':'pointer',opacity:isReadTodayLevel?.5:1}} onClick={()=>{if(!isReadTodayLevel){setSelectedLevel(story.level);setAddedWords({});setFinished(false);}}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 <div>
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                     <span className={`level-badge level-${story.level}`}>{story.level}</span>
-                    {story.level===todayFeatured&&<span style={{fontSize:11,color:'var(--rose)'}}>⭐ сегодня</span>}
-                    {wasRead&&<span style={{fontSize:11,color:'var(--sage)'}}>✓ прочитана</span>}
+                    {isReadTodayLevel&&<span style={{fontSize:11,color:'var(--sage)'}}>✓ прочитана</span>}
                   </div>
                   <div style={{fontFamily:"'Lora',serif",fontStyle:'italic',fontSize:17}}>{story.title}</div>
                   <div style={{fontSize:12,color:'#aaa',marginTop:3}}>{story.text.split(' ').length} слов</div>
                 </div>
-                <span style={{fontSize:22,opacity:.4}}>→</span>
+                <span style={{fontSize:22,opacity:isReadTodayLevel?.2:.4}}>→</span>
               </div>
             </div>
           );
@@ -1408,13 +1469,10 @@ food
         {wordsAdded>0&&<div className="card" style={{marginBottom:16,padding:14}}>
           <div style={{fontSize:13,color:'var(--sage)',fontWeight:600}}>✅ Добавлено {wordsAdded} новых слов в словарь</div>
         </div>}
-        <div className="card" style={{marginBottom:20,padding:16,background:'rgba(212,165,165,.06)',border:'1.5px solid rgba(212,165,165,.2)'}}>
-          <div style={{fontSize:11,color:'var(--rose)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8,fontWeight:600}}>⏰ Завтра появится</div>
-          <div style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center'}}>
-            <span className={`level-badge level-${tomorrowLevel}`}>{tomorrowLevel}</span>
-            <span style={{fontFamily:"'Lora',serif",fontStyle:'italic',fontSize:17}}>{tomorrowStory.title}</span>
-          </div>
-          <div style={{fontSize:12,color:'#aaa',marginTop:6}}>Новая книга каждый день · уровень меняется</div>
+        <div className="book-read-msg" style={{marginTop:20,marginBottom:20}}>
+          <div style={{fontSize:44,marginBottom:12}}>🌙</div>
+          <div style={{fontFamily:"'Lora',serif",fontStyle:'italic',fontSize:18,color:'var(--warm)',marginBottom:8,fontWeight:600}}>Возвращайтесь завтра!</div>
+          <div style={{fontSize:13,color:'#888',lineHeight:1.5}}>Каждый день появляется новая книга для каждого уровня. Завтра у уровня <strong>{story.level}</strong> будет другая книга.</div>
         </div>
         <button className="btn btn-primary" style={{width:'100%',padding:14,marginBottom:10}} onClick={()=>{setSelectedLevel(null);setFinished(false);}}>← К списку книг</button>
         <button className="btn btn-secondary" style={{width:'100%',padding:14}} onClick={back}>На главную</button>
@@ -1621,119 +1679,97 @@ function StatsPage({app,back}){
 // ────── SETTINGS ──────
 function SettingsPage({app,setApp,back}){
   const[msg,setMsg]=useState('');
-  const[ghToken,setGhToken]=useState(()=>localStorage.getItem('gh-token')||GH_TOKEN);
+
+  useEffect(()=>{
+    if(window.google&&!app.user){
+      try{
+        window.google.accounts.id.initialize({
+          client_id:'836240276310-urc8bgu3pp9gt6f0tt6ncus5e3akj8va.apps.googleusercontent.com',
+          callback:(response)=>{
+            try{
+              const base64Url=response.credential.split('.')[1];
+              const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
+              const jsonPayload=decodeURIComponent(atob(base64).split('').map((c)=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+              const decoded=JSON.parse(jsonPayload);
+              const newApp={...app,user:{name:decoded.name,email:decoded.email,picture:decoded.picture}};
+              setApp(newApp);
+              setMsg('✓ Успешный вход через Google!');
+              setTimeout(()=>setMsg(''),3000);
+            }catch(e){
+              setMsg('✗ Ошибка при обработке данных Google');
+            }
+          },
+          auto_select:false
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById('google_signin_button'),
+          {theme:'outline',size:'large',text:'signin_with'}
+        );
+      }catch(e){
+        console.error('Google init error:',e);
+      }
+    }
+  },[app.user]);
+
+  const[ghToken,setGhToken]=useState(()=>localStorage.getItem('gh-token')||'');
   const[showToken,setShowToken]=useState(false);
   const[syncing,setSyncing]=useState(false);
   const GH_USER='ari-fairy';const GH_REPO='english-journal';const GH_FILE='progress.json';
   function notify(text){setMsg(text);setTimeout(()=>setMsg(''),3500);}
   function saveToken(t){setGhToken(t);localStorage.setItem('gh-token',t);}
   async function ghRequest(method,body,sha){const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;const headers={'Authorization':'token '+ghToken,'Content-Type':'application/json'};const payload={message:'Sync '+todayStr(),content:btoa(unescape(encodeURIComponent(JSON.stringify(body))))};if(sha)payload.sha=sha;const res=await fetch(url,{method,headers,body:method==='GET'?undefined:JSON.stringify(payload)});return{res,data:await res.json()};}
-  async function syncSave(){
-    if(!ghToken){notify('❌ Введи токен');return;}
-    if(!app.user||!app.user.email){notify('❌ Сначала войди в Google');return;}
-    setSyncing(true);
-    notify('⏳ Сохраняю...');
-    try{
-      const fileName=`progress_${app.user.email}.json`;
-      const url=`https://api.github.com/repos/ari-fairy/english-journal/contents/${fileName}`;
-      const check=await fetch(url,{headers:{'Authorization':'token '+ghToken}});
-      let sha=undefined;
-      if(check.ok){
-        const d=await check.json();
-        sha=d.sha;
-      }
-      const content=btoa(unescape(encodeURIComponent(JSON.stringify(app))));
-      const payload={message:'Save for '+app.user.email+' at '+todayStr(),content:content};
-      if(sha)payload.sha=sha;
-      const{res}=await ghRequest('PUT',app,sha);
-      if(res.ok)notify('✅ Прогресс сохранён!');
-      else notify('❌ Ошибка. Проверь токен');
-    }catch(e){notify('❌ Нет соединения');}
-    setSyncing(false);
-  }
-  
-  async function syncLoad(){
-    if(!ghToken){notify('❌ Введи токен');return;}
-    if(!app.user||!app.user.email){notify('❌ Сначала войди в Google');return;}
-    setSyncing(true);
-    notify('⏳ Загружаю...');
-    try{
-      const fileName=`progress_${app.user.email}.json`;
-      const url=`https://api.github.com/repos/ari-fairy/english-journal/contents/${fileName}`;
-      const res=await fetch(url,{headers:{'Authorization':'token '+ghToken}});
-      if(!res.ok){notify('❌ Файл не найден для этого аккаунта');setSyncing(false);return;}
-      const d=await res.json();
-      const json=JSON.parse(decodeURIComponent(escape(atob(d.content))));
-      setApp(json);
-      saveData(json);
-      notify('✅ Прогресс загружен!');
-    }catch(e){notify('❌ Ошибка загрузки');}
-    setSyncing(false);
-  }
+  async function syncSave(){if(!ghToken){notify('❌ Введи токен');return;}setSyncing(true);notify('⏳ Сохраняю...');try{const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;const check=await fetch(url,{headers:{'Authorization':'token '+ghToken}});let sha=undefined;if(check.ok){const d=await check.json();sha=d.sha;}const{res}=await ghRequest('PUT',app,sha);if(res.ok)notify('✅ Прогресс сохранён!');else notify('❌ Ошибка. Проверь токен');}catch(e){notify('❌ Нет соединения');}setSyncing(false);}
+  async function syncLoad(){if(!ghToken){notify('❌ Введи токен');return;}setSyncing(true);notify('⏳ Загружаю...');try{const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;const res=await fetch(url,{headers:{'Authorization':'token '+ghToken}});if(!res.ok){notify('❌ Файл не найден');setSyncing(false);return;}const d=await res.json();const json=JSON.parse(decodeURIComponent(escape(atob(d.content))));setApp(json);saveData(json);notify('✅ Прогресс загружен!');}catch(e){notify('❌ Ошибка загрузки');}setSyncing(false);}
   function exportData(){const blob=new Blob([JSON.stringify(app)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='my-english-'+todayStr()+'.json';a.click();URL.revokeObjectURL(url);notify('✅ Скачано');}
   function importData(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);setApp(d);saveData(d);notify('✅ Импортировано');}catch(err){notify('❌ Ошибка');}};r.readAsText(f);}
   function reset(){if(!confirm('Удалить все данные?'))return;localStorage.removeItem('my-eng-v3');location.reload();}
-  
-  useEffect(()=>{
-    if(window.google&&document.getElementById('google_signin')){
-      window.google.accounts.id.initialize({
-        client_id:'836240276310-urc8bgu3pp9gt6f0tt6ncus5e3akj8va.apps.googleusercontent.com',
-        callback:(response)=>{
-          try{
-            const base64Url=response.credential.split('.')[1];
-            const base64=base64Url.replace(/-/g,'+').replace(/_/g,'/');
-            const jsonPayload=decodeURIComponent(atob(base64).split('').map((c)=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-            const decoded=JSON.parse(jsonPayload);
-            setApp({...app,user:{name:decoded.name,email:decoded.email,picture:decoded.picture}});
-            setMsg('✓ Вход выполнен!');
-          }catch(e){
-            console.error('Google error:',e);
-            setMsg('✗ Ошибка входа');
-          }
-        },
-        auto_select:false
-      });
-      // Re-render button every time component updates
-      window.google.accounts.id.renderButton(
-        document.getElementById('google_signin'),
-        {theme:'outline',size:'large',text:'signin_with'}
-      );
-    }
-  },[app.user]);
-  
   return(
     <div className="fade-in">
       <button className="back-btn" onClick={back} style={{marginBottom:16}}>← Назад</button>
       <h2 className="section-title" style={{marginBottom:16}}>Настройки</h2>
       {msg&&<div className="card" style={{textAlign:'center',marginBottom:12,padding:11,fontSize:14}}>{msg}</div>}
       <div className="card" style={{marginBottom:12}}>
-        <h3 style={{fontSize:14,fontWeight:600,marginBottom:4}}>👤 Google аккаунт</h3>
-        <p style={{fontSize:12,color:'#aaa',marginBottom:12}}>Войди чтобы синхронизировать данные по email</p>
+        <h3 style={{fontSize:14,fontWeight:600,marginBottom:4}}>☁️ Google синхронизация</h3>
+        <p style={{fontSize:12,color:'#aaa',marginBottom:12}}>Синхронизируй свой прогресс между устройствами</p>
         {!app.user?(
-          <div id="google_signin" style={{marginBottom:12}}></div>
+          <div>
+            <div id="google_signin_button" style={{display:'flex',justifyContent:'center'}}></div>
+            <p style={{fontSize:11,color:'#999',marginTop:12,textAlign:'center'}}>Войди через Google чтобы синхронизировать данные</p>
+          </div>
         ):(
-          <div style={{background:'rgba(148,161,135,.1)',border:'1.5px solid rgba(148,161,135,.25)',borderRadius:'1rem',padding:12,marginBottom:12}}>
-            <div style={{fontSize:12,fontWeight:600,color:'var(--sage)',marginBottom:4}}>✓ Вход выполнен</div>
+          <div style={{background:'rgba(148,161,135,.1)',border:'1.5px solid rgba(148,161,135,.25)',borderRadius:'1rem',padding:14,marginBottom:12}}>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--sage)',marginBottom:8}}>✓ Вход выполнен</div>
             <div style={{fontSize:12,color:'#888'}}>{app.user.email}</div>
             <button className="btn" style={{width:'100%',marginTop:12,padding:'10px 12px',fontSize:12,background:'transparent',border:'1.5px solid rgba(148,161,135,.25)',color:'var(--sage)',borderRadius:'999px',cursor:'pointer',fontFamily:'inherit',fontWeight:600}} onClick={()=>setApp({...app,user:null})}>Выйти</button>
           </div>
         )}
       </div>
-      <div className="card" style={{marginBottom:12}}>
-        <h3 style={{fontSize:14,fontWeight:600,marginBottom:4}}>☁️ GitHub синхронизация</h3>
-        <p style={{fontSize:12,color:'#aaa',marginBottom:12}}>Сохраняй прогресс в облако</p>
-        <div style={{display:'flex',gap:8,marginBottom:12}}>
-          <button className="btn btn-primary" style={{flex:1,padding:12,fontSize:13}} onClick={syncSave} disabled={syncing}>☁️ Сохранить</button>
-          <button className="btn btn-secondary" style={{flex:1,padding:12,fontSize:13}} onClick={syncLoad} disabled={syncing}>⬇️ Загрузить</button>
-        </div>
-        <div style={{borderTop:'1px solid #f0ebe3',paddingTop:12}}>
-          <div style={{fontSize:12,color:'#ccc',marginBottom:6,display:'flex',justifyContent:'space-between'}}>
-            <span>GitHub токен</span>
-            <button onClick={()=>setShowToken(v=>!v)} style={{background:'none',border:'none',color:'#ccc',cursor:'pointer',fontSize:12}}>{showToken?'скрыть':'показать'}</button>
+      {app.user&&(
+        <div className="card" style={{marginBottom:12}}>
+          <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>☁️ Синхронизация с GitHub</h3>
+          <p style={{fontSize:12,color:'#aaa',marginBottom:12}}>Сохрани и загрузи свои данные</p>
+          <div style={{display:'flex',gap:8}}>
+            <button className="btn btn-primary" style={{flex:1,padding:12,fontSize:13}} onClick={async()=>{
+              setMsg('⏳ Сохраняю...');
+              const ok=await saveToGithub(app,app.user.email);
+              setMsg(ok?'✅ Сохранено в GitHub!':'❌ Ошибка сохранения');
+              setTimeout(()=>setMsg(''),3000);
+            }}>☁️ Сохранить</button>
+            <button className="btn btn-secondary" style={{flex:1,padding:12,fontSize:13}} onClick={async()=>{
+              setMsg('⏳ Загружаю...');
+              const data=await loadFromGithub(app.user.email);
+              if(data){
+                setApp(data);
+                saveData(data);
+                setMsg('✅ Загружено с GitHub!');
+              }else{
+                setMsg('❌ Данные не найдены');
+              }
+              setTimeout(()=>setMsg(''),3000);
+            }}>⬇️ Загрузить</button>
           </div>
-          <input type={showToken?'text':'password'} placeholder="ghp_xxxxxxxxxxxx" value={ghToken} onChange={e=>saveToken(e.target.value)} className="input" style={{fontSize:13}}/>
         </div>
-      </div>
+      )}
       <div className="card" style={{marginBottom:12}}>
         <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>💾 Ручное копирование</h3>
         <button className="btn" style={{width:'100%',padding:11,marginBottom:8,fontSize:13}} onClick={exportData}>⬇️ Скачать (JSON)</button>
@@ -1815,6 +1851,43 @@ function App(){
       {view==='settings'&&<SettingsPage app={app} setApp={setApp} back={()=>setView('home')}/>}
     </div>
   );
+}
+
+// ────── GITHUB SYNC BY EMAIL ──────
+const GH_TOKEN='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';
+const GH_USER='ari-fairy';
+const GH_REPO='english-journal';
+
+async function saveToGithub(appData,userEmail){
+  if(!userEmail)return alert('❌ Сначала войди в Google');
+  const fileName=`progress_${userEmail}.json`;
+  try{
+    const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${fileName}`;
+    const check=await fetch(url,{headers:{'Authorization':'token '+GH_TOKEN}});
+    let sha=undefined;
+    if(check.ok){
+      const d=await check.json();
+      sha=d.sha;
+    }
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(appData))));
+    const payload={message:`Save for ${userEmail}`,content:content};
+    if(sha)payload.sha=sha;
+    const res=await fetch(url,{method:'PUT',headers:{'Authorization':'token '+GH_TOKEN,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(res.ok)return true;
+    return false;
+  }catch(e){console.error('Save error:',e);return false;}
+}
+
+async function loadFromGithub(userEmail){
+  if(!userEmail)return alert('❌ Сначала войди в Google');
+  const fileName=`progress_${userEmail}.json`;
+  try{
+    const url=`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${fileName}`;
+    const res=await fetch(url,{headers:{'Authorization':'token '+GH_TOKEN}});
+    if(!res.ok)return null;
+    const d=await res.json();
+    return JSON.parse(decodeURIComponent(escape(atob(d.content))));
+  }catch(e){console.error('Load error:',e);return null;}
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
